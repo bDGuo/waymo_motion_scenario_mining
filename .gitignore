@@ -1,3 +1,16 @@
+
+#ignore the helpers from waymo tutorial
+/tutorial
+/waymo_open_dataset
+try.ipynb
+__pycache__
+results
+
+
+
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
