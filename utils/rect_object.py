@@ -3,7 +3,6 @@
 # from selectors import EpollSelector
 from abc import ABC
 from cmath import nan
-from configparser import Interpolation
 import tensorflow as tf
 
 import numpy as np
@@ -16,11 +15,9 @@ class rect_object(ABC):
         self.type = state['type']
         self.x = state['x'] # [num_object:1,num_timestep:91]
         self.y = state['y']
-        self.z = state['z']
         self.bbox_yaw = state['bbox_yaw']
         self.length = state['length']
         self.width = state['width']
-        self.height = state['height']
         self.vel_yaw = state['vel_yaw']
         self.velocity_x = state['velocity_x']
         self.velocity_y = state['velocity_y']
@@ -40,31 +37,45 @@ class rect_object(ABC):
 
     def data_preprocessing(self):
         # interpolating the invalid data
-        mask = tf.where(tf.squeeze(self.validity)!=1).numpy()
-        if len(mask)==0:
+        # find where data is invalid
+        mask = np.where(self.validity.numpy().squeeze()!=1)[0] # [91,]
+        valid = np.where(self.validity.numpy().squeeze()==1)[0] # [91,]
+        valid_length = len(valid[:])
+        appearance_start = valid[0]
+        appearance_end = valid[-1]
+        appearance_length = appearance_end-appearance_start+1
+        if not len(mask):
             return 0
-        self.x = self.interpolation(self.x,mask)
-        self.y = self.interpolation(self.y,mask)
-        self.bbox_yaw = self.interpolation(self.bbox_yaw,mask)
-        self.length = self.interpolation(self.length,mask)
-        self.width = self.interpolation(self.width,mask)
-        self.vel_yaw = self.interpolation(self.vel_yaw,mask)
-        self.velocity_x = self.interpolation(self.velocity_x,mask)
-        self.velocity_y = self.interpolation(self.velocity_y,mask)
+        validity_proportion = valid_length / appearance_length
 
-    
-    def interpolation(self,data,mask):
-        temp = data.numpy().astype(np.float32)
-        temp = temp.squeeze()
-        if mask[0]==0:
-            value_indice = tf.where(tf.squeeze(self.validity)==1).numpy()[0]
-            temp[0]= temp[value_indice]
-            mask = np.delete(mask,0)
-        mask = mask.squeeze()
-        temp[mask] = nan
-        temp_pd = pd.DataFrame(temp)
-        temp = temp_pd.interpolate().values.T
-        return tf.convert_to_tensor(temp)
+        # TODO:modify for running in batch in case there is too many invalid time steps.
+        # Then this object should be skipped.
+        assert validity_proportion > 0.5, f"Valid data proportion too small.Valid/total={validity_proportion:.2f}<50%."
+        print(f"Valid/total={validity_proportion:.2f}.")
+
+        self.x = self.__interpolation(self.x,mask,valid)
+        self.y = self.__interpolation(self.y,mask,valid)
+        self.bbox_yaw = self.__interpolation(self.bbox_yaw,mask,valid)
+        self.length = self.__interpolation(self.length,mask,valid)
+        self.width = self.__interpolation(self.width,mask,valid)
+        self.vel_yaw = self.__interpolation(self.vel_yaw,mask,valid,True)
+        self.velocity_x = self.__interpolation(self.velocity_x,mask,valid,True)
+        self.velocity_y = self.__interpolation(self.velocity_y,mask,valid,True)
+        
+    def __clean_abnormal_velocity(self):
+        pass
+
+    def __interpolation(self,data,mask,valid,VELOCITY:bool=False):
+        result = data.numpy().astype(np.float32)
+        result = result.squeeze()
+        result[mask] = np.nan
+        temp_pd = pd.DataFrame(result[valid[0]:valid[-1]+1])
+        # by default [np.nan,np.nan,1,np.nan,3,np.nan]-> 
+                # [np.nan,np.nan,1,2,3,3]
+        temp = temp_pd.interpolate().values.T.squeeze()
+        result[valid[0]:valid[-1]+1] = temp
+
+        return tf.convert_to_tensor(result)
 
 
 
@@ -147,6 +158,7 @@ class rect_interaction(ABC):
         '''
         if anyone of the four vertices of r2 fall in r1, they are intersected
         c1...c4x(y) are the cordinates of four vertices
+        TODO:crossing test https://blog.csdn.net/s0rose/article/details/78831570
         ''' 
         # rotate r1 and r2 cordinate with heading angle of r1
         (r1_cx, r1_cy) = self.cordinate_rotate(r1['cx'],r1['cy'],r1['theta'])

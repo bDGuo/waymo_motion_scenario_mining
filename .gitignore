@@ -4,7 +4,8 @@
 /waymo_open_dataset
 try.ipynb
 __pycache__
-results
+/results
+/figures
 
 
 

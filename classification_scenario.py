@@ -38,9 +38,8 @@ TTC = 1
 SAMPLING_FQ = 10
 
 def data_preprocessing():
-
+# TODO: realized in rect_object.py
     pass
-
 
 
 for vehicle in track(vehicle_ind):
@@ -50,11 +49,9 @@ for vehicle in track(vehicle_ind):
         'type':tf.gather(parsed['state/type'],vehicle),
         'x':tf.gather(tf.concat([parsed['state/past/x'],parsed['state/current/x'],parsed['state/future/x']],1),vehicle),
         'y':tf.gather(tf.concat([parsed['state/past/y'],parsed['state/current/y'],parsed['state/future/y']],1),vehicle),
-        'z':tf.gather(tf.concat([parsed['state/past/z'],parsed['state/current/z'],parsed['state/future/z']],1),vehicle),
         'bbox_yaw':tf.gather(tf.concat([parsed['state/past/bbox_yaw'],parsed['state/current/bbox_yaw'],parsed['state/future/bbox_yaw']],1),vehicle),
         'length':tf.gather(tf.concat([parsed['state/past/length'],parsed['state/current/length'],parsed['state/future/length']],1),vehicle),
         'width':tf.gather(tf.concat([parsed['state/past/width'],parsed['state/current/width'],parsed['state/future/width']],1),vehicle),
-        'height':tf.gather(tf.concat([parsed['state/past/height'],parsed['state/current/height'],parsed['state/future/height']],1),vehicle),
         'vel_yaw':tf.gather(tf.concat([parsed['state/past/vel_yaw'],parsed['state/current/vel_yaw'],parsed['state/future/vel_yaw']],1),vehicle),
         'velocity_x':tf.gather(tf.concat([parsed['state/past/velocity_x'],parsed['state/current/velocity_x'],parsed['state/future/velocity_x']],1),vehicle),
         'velocity_y':tf.gather(tf.concat([parsed['state/past/velocity_y'],parsed['state/current/velocity_y'],parsed['state/future/velocity_y']],1),vehicle),
@@ -68,11 +65,9 @@ for vehicle in track(vehicle_ind):
         'type':tf.gather(parsed['state/type'],pedestrian),
         'x':tf.gather(tf.concat([parsed['state/past/x'],parsed['state/current/x'],parsed['state/future/x']],1),pedestrian),
         'y':tf.gather(tf.concat([parsed['state/past/y'],parsed['state/current/y'],parsed['state/future/y']],1),pedestrian),
-        'z':tf.gather(tf.concat([parsed['state/past/z'],parsed['state/current/z'],parsed['state/future/z']],1),pedestrian),
         'bbox_yaw':tf.gather(tf.concat([parsed['state/past/bbox_yaw'],parsed['state/current/bbox_yaw'],parsed['state/future/bbox_yaw']],1),pedestrian),
         'length':tf.gather(tf.concat([parsed['state/past/length'],parsed['state/current/length'],parsed['state/future/length']],1),pedestrian),
         'width':tf.gather(tf.concat([parsed['state/past/width'],parsed['state/current/width'],parsed['state/future/width']],1),pedestrian),
-        'height':tf.gather(tf.concat([parsed['state/past/height'],parsed['state/current/height'],parsed['state/future/height']],1),pedestrian),
         'vel_yaw':tf.gather(tf.concat([parsed['state/past/vel_yaw'],parsed['state/current/vel_yaw'],parsed['state/future/vel_yaw']],1),pedestrian),
         'velocity_x':tf.gather(tf.concat([parsed['state/past/velocity_x'],parsed['state/current/velocity_x'],parsed['state/future/velocity_x']],1),pedestrian),
         'velocity_y':tf.gather(tf.concat([parsed['state/past/velocity_y'],parsed['state/current/velocity_y'],parsed['state/future/velocity_y']],1),pedestrian),
