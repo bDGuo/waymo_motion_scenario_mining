@@ -4,23 +4,27 @@
 from abc import ABC
 from cmath import nan
 import tensorflow as tf
-
+from scipy.interpolate import UnivariateSpline
 import numpy as np
 import pandas as pd
+from math import pi
 
 class rect_object(ABC):
     
     def __init__(self,state):
         self.id = state['id']
         self.type = state['type']
-        self.x = state['x'] # [num_object:1,num_timestep:91]
-        self.y = state['y']
-        self.bbox_yaw = state['bbox_yaw']
-        self.length = state['length']
-        self.width = state['width']
-        self.vel_yaw = state['vel_yaw']
-        self.velocity_x = state['velocity_x']
-        self.velocity_y = state['velocity_y']
+        # [num_object:1,num_timestep:91]
+        self.kinematics = {
+            'x' : state['x'],
+            'y' : state['y'],
+        'bbox_yaw': state['bbox_yaw'],
+        'length' : state['length'],
+        'width' : state['width'],
+        'vel_yaw' : state['vel_yaw'], # The yaw angle of each object's velocity vector at each time step.[google]
+        'velocity_x' : state['velocity_x'],
+        'velocity_y' : state['velocity_y'],
+        }
         self.tag = {}
         self.validity = state['validity']
 
@@ -35,7 +39,7 @@ class rect_object(ABC):
         y_ = - tf.sin(tf.cast(theta, tf.float32)) * x + tf.cos(tf.cast(theta, tf.float32)) * y
         return (x_,y_)
 
-    def data_preprocessing(self):
+    def data_preprocessing(self,interp:bool=True,spline:bool=False,moving_average:bool=False):
         # interpolating the invalid data
         # find where data is invalid
         mask = np.where(self.validity.numpy().squeeze()!=1)[0] # [91,]
@@ -52,18 +56,63 @@ class rect_object(ABC):
         # Then this object should be skipped.
         assert validity_proportion > 0.5, f"Valid data proportion too small.Valid/total={validity_proportion:.2f}<50%."
         print(f"Valid/total={validity_proportion:.2f}.")
+        # size yaw angle in (0,2*pi) counter clockwise
+        self.kinematics['bbox_yaw'] = (self.kinematics['bbox_yaw']+100*pi) % (2*pi)
+        self.kinematics['vel_yaw'] = (self.kinematics['vel_yaw']+100*pi) % (2*pi)
 
-        self.x = self.__interpolation(self.x,mask,valid)
-        self.y = self.__interpolation(self.y,mask,valid)
-        self.bbox_yaw = self.__interpolation(self.bbox_yaw,mask,valid)
-        self.length = self.__interpolation(self.length,mask,valid)
-        self.width = self.__interpolation(self.width,mask,valid)
-        self.vel_yaw = self.__interpolation(self.vel_yaw,mask,valid,True)
-        self.velocity_x = self.__interpolation(self.velocity_x,mask,valid,True)
-        self.velocity_y = self.__interpolation(self.velocity_y,mask,valid,True)
-        
-    def __clean_abnormal_velocity(self):
-        pass
+        if interp:
+            for key in self.kinematics:
+                self.kinematics[key] = self.__interpolation(self.kinematics[key],mask,valid)
+        if spline:
+            for key in self.kinematics:
+                self.kinematics[key] = self.__Univariate_spline(self.kinematics[key],mask,valid)
+        if moving_average:
+            pass
+        else:
+            pass
+
+
+    def clean_abnormal_velocity(self,data,valid,t_s,max_acc:float=0.7):
+        # return [time_steps,]
+        temp = data.squeeze()[valid[0]:valid[-1]+1]
+        temp_shift = np.insert(temp[:-1],0,0)
+        normal_temp = temp.copy()
+        abnormal_temp_indice = np.where(np.abs(temp-temp_shift)>(max_acc*t_s))[0][1:]
+        for i in abnormal_temp_indice:
+            normal_temp[i] = np.sign(temp[i] - temp[i-1]) *max_acc*t_s + normal_temp[i-1]
+        data[valid[0]:valid[-1]+1] = normal_temp
+        return data
+
+    def __Univariate_spline(self,data,mask,valid):
+        """
+        Univariate spline for the noisy data
+        ---------------------------------
+        Output:[time_steps,]
+        """
+        temp = data.numpy().astype(np.float32)
+        temp = temp.squeeze()
+        univariate_spliner = UnivariateSpline(valid,temp[valid])
+        time_x = np.arange(len(temp))
+        result = univariate_spliner(time_x)
+        result[:valid[0]] = np.nan
+        result[valid[-1]+1:] = np.nan
+        return tf.convert_to_tensor(result,dtype=tf.float32)
+
+    def __simple_moving_average(self,data,mask,valid,kernel_length):
+        filtered_data = np.convolve(data[valid[0]:valid[-1]+1],np.ones(kernel_length))\
+            [:(valid[-1]-valid[0]+1)] / kernel_length
+        # bias correction
+        sum_start = 0
+        sum_end = 0
+        for i in range(kernel_length-1):
+            sum_start += filtered_data[i]
+            filtered_data[i] = sum_start/ (i+1)
+            sum_end += filtered_data[-i]
+            filtered_data[-i] = sum_end / (i+1)
+        data[valid[0]:valid[-1]+1] = filtered_data.copy()
+        data[0,:valid[0]] = np.nan
+        data[0,valid[-1]+1:] = np.nan
+        return tf.convert_to_tensor(data,dtype=tf.float32)
 
     def __interpolation(self,data,mask,valid,VELOCITY:bool=False):
         result = data.numpy().astype(np.float32)
@@ -75,9 +124,7 @@ class rect_object(ABC):
         temp = temp_pd.interpolate().values.T.squeeze()
         result[valid[0]:valid[-1]+1] = temp
 
-        return tf.convert_to_tensor(result)
-
-
+        return tf.convert_to_tensor(result,dtype=tf.float32)
 
 class rect_interaction(ABC):
     
@@ -85,19 +132,19 @@ class rect_interaction(ABC):
         '''
         cx,cy: cordinates of center
         '''
-        self.r1={'cx':rect1.x,'cy':rect1.y,
-                'l':rect1.length, 'w': rect1.width,
-                'theta': rect1.bbox_yaw,
-                'v_yaw': rect1.vel_yaw,
-                'v_x': rect1.velocity_x, 
-                'v_y':rect1.velocity_y} #[num_object=1,num_steps]
+        self.r1={'cx':rect1.kinematics['x'],'cy':rect1.kinematics['y'],
+                'l':rect1.kinematics['length'], 'w': rect1.kinematics['width'],
+                'theta': rect1.kinematics['bbox_yaw'],
+                'v_yaw': rect1.kinematics['vel_yaw'],
+                'v_x': rect1.kinematics['velocity_x'], 
+                'v_y':rect1.kinematics['velocity_y']} #[num_object=1,num_steps]
         
-        self.r2={'cx':rect2.x,'cy':rect2.y,
-                'l':rect2.length, 'w': rect2.width,
-                'theta': rect2.bbox_yaw,
-                'v_yaw': rect2.vel_yaw,
-                'v_x': rect2.velocity_x,
-                'v_y':rect2.velocity_y} #[num_object=1,num_steps]
+        self.r2={'cx':rect2.kinematics['x'],'cy':rect2.kinematics['y'],
+                'l':rect2.kinematics['length'], 'w': rect2.kinematics['width'],
+                'theta': rect2.kinematics['bbox_yaw'],
+                'v_yaw': rect2.kinematics['vel_yaw'],
+                'v_x': rect2.kinematics['velocity_x'], 
+                'v_y':rect2.kinematics['velocity_y']} #[num_object=1,num_steps]
 
 
     def rect_relation(self,ttc=3.0,sampling_fq=2):
