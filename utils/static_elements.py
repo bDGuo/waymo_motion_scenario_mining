@@ -1,0 +1,230 @@
+
+import tensorflow as tf
+import numpy as np
+from typing import Any, Dict,Tuple
+from shapely.geometry import LineString,Polygon,Point
+
+class StaticElementsWaymo:
+    """
+    The class is an abstract class for static elements in different datasets.
+    to represent all the static elements in 2-d array.
+    Including (refered to Waymo Motion, to be filled with other datasets datum:12.10.2022)
+    1 - freeway
+    2 - surface street
+    3 - bike lane
+    18 - Crosswalk
+    19 - Speed bump
+    others - unknown
+    Another tag for the static elements is whether it is controlled by a light or not.
+    0 - not controlled by a light
+    1 - arrow stop
+    2 - arrow caution
+    3 - arrow go
+    4 - stop
+    5 - caution
+    6 - go
+    7 - flashing stop
+    8 - flashing caution
+    The other tag for the static elements is the lane id.
+    --------------------------------------------------------------
+    Init: packed as a dict
+    road graph samples:
+    sample cordinates, sample lane type, sample lane id
+    traffic lights:
+    traffic light state, lane id controlled by the traffic light
+    --------------------------------------------------------------
+    
+    """
+    def __init__(self,original_data_roadgragh:Dict,original_data_light:Dict) -> None:
+        """
+        original_data_roadgragh: dict     the original data from the dataset
+        {'roadgraph_samples_xyz', 'roadgraph_samples_type', 'roadgraph_samples_lane_id',"roadgraph_dir_xyz"}
+
+        original_data_light: dict         the original data from the dataset
+        [time_steps, num_lights]
+        {'traffic_light_state', 'traffic_light_lane_id','traffic_light_valid'}
+
+        NOTICE: all time of traffic light data should be concatenated 
+        """
+        self.original_data_roadgragh = original_data_roadgragh
+        self.original_data_light = original_data_light
+        self.view_port = {}
+        # following are the lane type set in the Waymo Motion Dataset
+        self.lane_type = {'freeway':1,'surface_street':2,'bike_lane':3}
+        self.lane_width ={'freeway':3.5,'surface_street':3.5,'bike_lane':1.5}
+
+        # cross walk have no educated width, since their points are not sampled at 0.5m and they are just arcs of polygons
+        self.other_object_type = {'cross_walk':18,'speed_bump':19}
+        self.other_object = {'cross_walk':[],'speed_bump':[]}
+        self.lane = {'freeway':[],'surface_street':[],'bike_lane':[]}
+        self.controlled_lane = {'controlled_lane_polygon':[],'controlled_lane_state':[]}
+        self.controlled_lanes_id = []
+
+    def __call__(self):
+        pass
+        
+    def __set_view_port(self)->Tuple:
+        """
+        get the view port of the scene
+        """
+        # [num_samples, 1]
+        all_y = self.original_data_roadgragh['roadgraph_samples_xyz'][:,1].numpy()
+        all_x = self.original_data_roadgragh['roadgraph_samples_xyz'][:,0].numpy()
+        center_y = (np.max(all_y) - np.min(all_y)) / 2
+        center_x = (np.max(all_x) - np.min(all_x)) / 2
+        range_y = np.ptp(all_y)
+        range_x = np.ptp(all_x)
+        width = max(range_y, range_x)
+        self.view_port['center_x'] = center_x
+        self.view_port['center_y'] = center_y
+        self.view_port['width'] = width
+        return center_x,center_y,width
+    
+    def __get_view_port(self):
+        """
+        set the view port of the scene
+        """
+        if 'center_x' in self.view_port and 'center_y' in self.view_port and 'width' in self.view_port:
+            return self.view_port['center_x'],self.view_port['center_y'],self.view_port['width']
+        else:
+            return self.__set_view_port()
+    
+    def __set_view_edge(self)->Tuple:
+        """
+        get the view edge of the scene
+        """
+        center_x,center_y,width = self.__get_view_port()
+        self.view_port['left_edge'] = center_x - width / 2
+        self.view_port['right_edge'] = center_x + width / 2
+        self.view_port['top_edge'] = center_y + width / 2
+        self.view_port['bottom_edge'] = center_y - width / 2
+        return center_x - width/2, center_x + width/2, center_y - width/2, center_y + width/2
+
+    def __get_view_edge(self):
+        """
+        set the view edge of the scene
+        """
+        if 'left_edge' in self.view_port and 'right_edge' in self.view_port and 'top_edge' in self.view_port and 'bottom_edge' in self.view_port:
+            return self.view_port['left_edge'],self.view_port['right_edge'],self.view_port['top_edge'],self.view_port['bottom_edge']
+        else:
+            return self.__set_view_edge()
+    
+    def get_lane(self,key):
+        """
+        get the lane of the scene
+        """
+        return self.lane[key]
+    def get_other_object(self,key):
+        """
+        get the other_object of the scene
+        """
+        return self.other_object[key]
+    def get_controlled_lane(self):
+        """
+        get the controlled_lane of the scene
+        """
+        return self.controlled_lane['controlled_lane_polygon'],self.controlled_lane['controlled_lane_state']
+    
+    def create_polygon_set(self):
+        # [num_points, 3] float32.
+        roadgraph_xyz = self.original_data_roadgragh['roadgraph_xyz']
+        roadgraph_type = self.original_data_roadgragh['roadgraph_type']
+        roadgraph_lane_id = self.original_data_roadgragh['roadgraph_lane_id']
+        roadgraph_dir_xyz = self.original_data_roadgragh['roadgraph_dir_xyz']
+        traffic_lights_id = self.original_data_light['traffic_lights_id']
+        traffic_lights_valid_status = self.original_data_light['traffic_lights_valid_status']
+        traffic_lights_state = self.original_data_light['traffic_lights_state']
+        controlled_lanes_id = np.unique(traffic_lights_id[traffic_lights_valid_status==1])
+        self.controlled_lanes_id = controlled_lanes_id
+        # create the lane polygon set
+        self.__create_lane_polygon_set(roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz,roadgraph_lane_id,controlled_lanes_id)
+        # create the other object polygon set
+        self.__create_other_object_polygon_set(roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz)
+
+        
+    def __create_lane_polygon_set(self,roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz,roadgraph_lane_id,controlled_lanes_id):
+        for key in self.lane_type:
+            lane_mask = np.where(roadgraph_type[:,0]==self.lane_type[key])[0]
+            lane_pts = roadgraph_xyz[lane_mask,:2].T
+            lane_dir = roadgraph_dir_xyz[lane_mask,:2].T
+            lane_id = roadgraph_lane_id[lane_mask]
+            # print(f"lane {key} has {lane_pts.shape} points")
+            if(len(lane_mask)):
+                lane_start = 0
+                lane_coordinates = [(lane_pts[0,lane_start],lane_pts[1,lane_start])]
+                for i,(pt_x,pt_y,dir_x,dir_y) in enumerate(zip(lane_pts[0,:],lane_pts[1,:],lane_dir[0,:],lane_dir[1,:])):
+                    if dir_y*dir_x==0:
+                        if len(lane_coordinates)>1:
+                            lane_polylines = LineString(lane_coordinates)
+                            lane_polygon = Polygon(lane_polylines.buffer(self.lane_width[key]/2))
+                            self.lane[key].append(lane_polygon)
+                            # append controlled lane polygon
+                            if lane_id[i,0] in controlled_lanes_id:
+                                self.controlled_lane['controlled_lane_polygon'].append(lane_polygon)
+                                """TODO: the traffic light state is to be finished. 
+                                Considering multiple traffic lights work for a same lane. 
+                                How to assign the light state? Two-directions are not same. How to determin direction?
+                                """
+                                # controlled_lanes_state = traffic_lights_state[:,controlled_lanes_id==roadgraph_lane_id[i,0]]
+                                # self.controlled_lane['controlled_lane_state'].append(controlled_lanes_state)
+                        else:
+                            lane_point = Point(lane_coordinates[0]).buffer(self.lane_width[key]/2)
+                            self.lane[key].append(lane_point)
+                        lane_start = i+1
+                        if lane_start == len(lane_pts[0,:]):
+                            break
+                        else:
+                            lane_coordinates = [(lane_pts[0,lane_start],lane_pts[1,lane_start])]
+                    for _,(pt_x_2,pt_y_2) in enumerate(zip(lane_pts[0,lane_start:],lane_pts[1,lane_start:])):
+                        if dir_x == 0 and dir_y != 0:
+                            if pt_x_2 == pt_x:
+                                lane_coordinates.append((pt_x_2,pt_y_2))
+                                break
+                        elif dir_y == 0 and dir_x != 0:
+                            if pt_y_2 == pt_y:
+                                lane_coordinates.append((pt_x_2,pt_y_2))
+                                break
+                        elif dir_x !=0 and dir_y != 0:
+                            if np.abs((pt_x_2-pt_x)/dir_x-(pt_y_2-pt_y)/dir_y) < 1e-1:
+                                lane_coordinates.append((pt_x_2,pt_y_2))
+                                break
+
+    def __create_other_object_polygon_set(self,roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz):
+        # create the crosswalk and speed bump polygon set
+        for key in self.other_object_type:
+            object_type_mask = np.where((roadgraph_type[:,0]==self.other_object_type[key]))[0]
+            object_type_pts = roadgraph_xyz[object_type_mask,:2].T
+            object_type_dir = roadgraph_dir_xyz[object_type_mask,:2].T
+            if len(object_type_mask):
+                polygon_start = 0
+                polygon_coordinates =  [(object_type_pts[0,polygon_start],object_type_pts[1,polygon_start])]
+                for i,(pt_x,pt_y,dir_x,dir_y) in enumerate(zip(object_type_pts[0,:],object_type_pts[1,:],object_type_dir[0,:],object_type_dir[1,:])):
+                    if dir_x*dir_y==0:
+                        polygon_start = i+1
+                        if len(polygon_coordinates)>1:
+                            object_polygon = Polygon(polygon_coordinates)
+                            self.other_object[key].append(object_polygon)
+                        # for cross walk or other objects, a single point is meaningless
+                        else:
+                            pass
+                        polygon_start = i+1
+                        if polygon_start == len(object_type_pts[0,:]):
+                            break
+                        else:
+                            polygon_coordinates = [(object_type_pts[0,polygon_start],object_type_pts[1,polygon_start])]
+                    for j,(pt_x_2,pt_y_2) in enumerate(zip(object_type_pts[0,:],object_type_pts[1,:])):
+                        if i==j:
+                            continue
+                        if dir_x==0 and dir_y!=0:
+                            if pt_x_2==pt_x:
+                                polygon_coordinates.append((pt_x_2,pt_y_2))
+                                break
+                        elif dir_y==0 and dir_x!=0:
+                            if pt_y_2==pt_y:
+                                polygon_coordinates.append((pt_x_2,pt_y_2))
+                                break
+                        elif dir_x!=0 and dir_y!=0:
+                            if np.abs((pt_x_2-pt_x)/dir_x-(pt_y_2-pt_y)/dir_y) < 1e-1:
+                                polygon_coordinates.append((pt_x_2,pt_y_2))
+                                break
+
