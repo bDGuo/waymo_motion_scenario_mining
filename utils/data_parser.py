@@ -1,4 +1,5 @@
-
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 
 # Field Definition
@@ -110,6 +111,8 @@ traffic_light_features = {
         tf.io.FixedLenFeature([1, 16], tf.float32, default_value=None),
     'traffic_light_state/current/z':
         tf.io.FixedLenFeature([1, 16], tf.float32, default_value=None),
+    'traffic_light_state/current/id':
+        tf.io.FixedLenFeature([1, 16], tf.int64, default_value=None),
     'traffic_light_state/past/state':
         tf.io.FixedLenFeature([10, 16], tf.int64, default_value=None),
     'traffic_light_state/past/valid':
@@ -120,6 +123,20 @@ traffic_light_features = {
         tf.io.FixedLenFeature([10, 16], tf.float32, default_value=None),
     'traffic_light_state/past/z':
         tf.io.FixedLenFeature([10, 16], tf.float32, default_value=None),
+    'traffic_light_state/past/id':
+        tf.io.FixedLenFeature([10, 16], tf.int64, default_value=None),
+    'traffic_light_state/future/state':
+        tf.io.FixedLenFeature([80, 16], tf.int64, default_value=None),
+    'traffic_light_state/future/valid':
+        tf.io.FixedLenFeature([80, 16], tf.int64, default_value=None),
+    'traffic_light_state/future/id':
+        tf.io.FixedLenFeature([80, 16], tf.int64, default_value=None),
+    'traffic_light_state/future/x':
+        tf.io.FixedLenFeature([80, 16], tf.float32, default_value=None),
+    'traffic_light_state/future/y':
+        tf.io.FixedLenFeature([80, 16], tf.float32, default_value=None),
+    'traffic_light_state/future/z':
+        tf.io.FixedLenFeature([80, 16], tf.float32, default_value=None),
 }
 
 features_description = {}

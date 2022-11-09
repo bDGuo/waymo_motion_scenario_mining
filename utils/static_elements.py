@@ -1,8 +1,7 @@
 
-import tensorflow as tf
 import numpy as np
-from typing import Any, Dict,Tuple
-from shapely.geometry import LineString,Polygon,Point
+from typing import Dict,Tuple
+from shapely.geometry import LineString,Polygon,Point,MultiPolygon
 
 class StaticElementsWaymo:
     """
@@ -52,13 +51,14 @@ class StaticElementsWaymo:
         # following are the lane type set in the Waymo Motion Dataset
         self.lane_type = {'freeway':1,'surface_street':2,'bike_lane':3}
         self.lane_width ={'freeway':3.5,'surface_street':3.5,'bike_lane':1.5}
+        self.lane = {'freeway':[],'surface_street':[],'bike_lane':[]}
 
         # cross walk have no educated width, since their points are not sampled at 0.5m and they are just arcs of polygons
         self.other_object_type = {'cross_walk':18,'speed_bump':19}
         self.other_object = {'cross_walk':[],'speed_bump':[]}
-        self.lane = {'freeway':[],'surface_street':[],'bike_lane':[]}
-        self.controlled_lane = {'controlled_lane_polygon':[],'controlled_lane_state':[]}
+        self.controlled_lane = {'controlled_lane_polygon':[]}
         self.controlled_lanes_id = []
+        self.traffic_lights = {}
 
     def __call__(self):
         pass
@@ -114,16 +114,20 @@ class StaticElementsWaymo:
         get the lane of the scene
         """
         return self.lane[key]
+
+
     def get_other_object(self,key):
         """
         get the other_object of the scene
         """
         return self.other_object[key]
+    
+
     def get_controlled_lane(self):
         """
         get the controlled_lane of the scene
         """
-        return self.controlled_lane['controlled_lane_polygon'],self.controlled_lane['controlled_lane_state']
+        return self.controlled_lane['controlled_lane_polygon']
     
     def create_polygon_set(self):
         # [num_points, 3] float32.
@@ -132,16 +136,16 @@ class StaticElementsWaymo:
         roadgraph_lane_id = self.original_data_roadgragh['roadgraph_lane_id']
         roadgraph_dir_xyz = self.original_data_roadgragh['roadgraph_dir_xyz']
         traffic_lights_id = self.original_data_light['traffic_lights_id']
-        traffic_lights_valid_status = self.original_data_light['traffic_lights_valid_status']
-        traffic_lights_state = self.original_data_light['traffic_lights_state']
+        traffic_lights_valid_status = self.original_data_light['traffic_lights_valid']
         controlled_lanes_id = np.unique(traffic_lights_id[traffic_lights_valid_status==1])
-        self.controlled_lanes_id = controlled_lanes_id
+        self.controlled_lanes_id = controlled_lanes_id.tolist()
         # create the lane polygon set
         self.__create_lane_polygon_set(roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz,roadgraph_lane_id,controlled_lanes_id)
         # create the other object polygon set
         self.__create_other_object_polygon_set(roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz)
+        # create the traffic light dict
+        self.__reducing_traffic_lights_dim()
 
-        
     def __create_lane_polygon_set(self,roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz,roadgraph_lane_id,controlled_lanes_id):
         for key in self.lane_type:
             lane_mask = np.where(roadgraph_type[:,0]==self.lane_type[key])[0]
@@ -153,7 +157,7 @@ class StaticElementsWaymo:
                 lane_start = 0
                 lane_coordinates = [(lane_pts[0,lane_start],lane_pts[1,lane_start])]
                 for i,(pt_x,pt_y,dir_x,dir_y) in enumerate(zip(lane_pts[0,:],lane_pts[1,:],lane_dir[0,:],lane_dir[1,:])):
-                    if dir_y*dir_x==0:
+                    if dir_y==0 and dir_x==0:
                         if len(lane_coordinates)>1:
                             lane_polylines = LineString(lane_coordinates)
                             lane_polygon = Polygon(lane_polylines.buffer(self.lane_width[key]/2))
@@ -161,12 +165,6 @@ class StaticElementsWaymo:
                             # append controlled lane polygon
                             if lane_id[i,0] in controlled_lanes_id:
                                 self.controlled_lane['controlled_lane_polygon'].append(lane_polygon)
-                                """TODO: the traffic light state is to be finished. 
-                                Considering multiple traffic lights work for a same lane. 
-                                How to assign the light state? Two-directions are not same. How to determin direction?
-                                """
-                                # controlled_lanes_state = traffic_lights_state[:,controlled_lanes_id==roadgraph_lane_id[i,0]]
-                                # self.controlled_lane['controlled_lane_state'].append(controlled_lanes_state)
                         else:
                             lane_point = Point(lane_coordinates[0]).buffer(self.lane_width[key]/2)
                             self.lane[key].append(lane_point)
@@ -175,7 +173,7 @@ class StaticElementsWaymo:
                             break
                         else:
                             lane_coordinates = [(lane_pts[0,lane_start],lane_pts[1,lane_start])]
-                    for _,(pt_x_2,pt_y_2) in enumerate(zip(lane_pts[0,lane_start:],lane_pts[1,lane_start:])):
+                    for _,(pt_x_2,pt_y_2) in enumerate(zip(lane_pts[0,:],lane_pts[1,:])):
                         if dir_x == 0 and dir_y != 0:
                             if pt_x_2 == pt_x:
                                 lane_coordinates.append((pt_x_2,pt_y_2))
@@ -185,7 +183,7 @@ class StaticElementsWaymo:
                                 lane_coordinates.append((pt_x_2,pt_y_2))
                                 break
                         elif dir_x !=0 and dir_y != 0:
-                            if np.abs((pt_x_2-pt_x)/dir_x-(pt_y_2-pt_y)/dir_y) < 1e-1:
+                            if np.abs((pt_x_2-pt_x)/dir_x-(pt_y_2-pt_y)/dir_y) < 1e-10:
                                 lane_coordinates.append((pt_x_2,pt_y_2))
                                 break
 
@@ -199,7 +197,7 @@ class StaticElementsWaymo:
                 polygon_start = 0
                 polygon_coordinates =  [(object_type_pts[0,polygon_start],object_type_pts[1,polygon_start])]
                 for i,(pt_x,pt_y,dir_x,dir_y) in enumerate(zip(object_type_pts[0,:],object_type_pts[1,:],object_type_dir[0,:],object_type_dir[1,:])):
-                    if dir_x*dir_y==0:
+                    if dir_y==0 and dir_x==0:
                         polygon_start = i+1
                         if len(polygon_coordinates)>1:
                             object_polygon = Polygon(polygon_coordinates)
@@ -228,3 +226,21 @@ class StaticElementsWaymo:
                                 polygon_coordinates.append((pt_x_2,pt_y_2))
                                 break
 
+    def __reducing_traffic_lights_dim(self):
+        self.traffic_lights['traffic_lights_state'] = self.original_data_light['traffic_lights_state']
+        self.traffic_lights['traffic_lights_lane_id'] = self.original_data_light['traffic_lights_id']
+
+        traffic_lights_x = self.original_data_light['traffic_lights_pos_x']
+        traffic_lights_y = self.original_data_light['traffic_lights_pos_y']
+        traffic_lights_valid = self.original_data_light['traffic_lights_valid']
+        self.traffic_lights['points'] = []
+        for traffic_light_x,traffic_light_y,traffic_light_valid in zip(traffic_lights_x.T,traffic_lights_y.T,traffic_lights_valid.T):
+            valid = np.where(traffic_light_valid==1)[0]
+            if len(valid):
+                pos_x = np.average(traffic_light_x[valid])
+                pos_y = np.average(traffic_light_y[valid])
+                traffic_light_point = Point(pos_x,pos_y)
+                self.traffic_lights['points'].append(traffic_light_point)
+            else:
+                continue
+        return 0

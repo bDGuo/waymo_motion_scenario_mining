@@ -37,10 +37,6 @@ cyclist_ind = tf.where((parsed['state/type']==3))
 TTC = 1
 SAMPLING_FQ = 10
 
-def data_preprocessing():
-# TODO: realized in rect_object.py
-    pass
-
 
 for vehicle in track(vehicle_ind):
     vehicle_rect = rect_object(

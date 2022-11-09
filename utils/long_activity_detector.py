@@ -1,11 +1,13 @@
-from cmath import nan
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 import tensorflow as tf
 from rect_object import rect_object
 import numpy as np
 from data_preprocessing import univariate_spline
 
 
-def long_act_detector(rect:rect_object,k_h,max_acc,t_s=0.1,a_cruise=0.1,delta_v=1,time_steps=91,k_cruise=10,k=5)->tf.Tensor:
+def long_act_detector(rect:rect_object,k_h,max_acc,t_s=0.1,a_cruise=0.1,delta_v=1,time_steps=91,k_cruise=10,k=3,smoothing_factor=None)->tuple:
     """
     Determine the longitudial activity of the input actor.
     ------------------------------------------------------
@@ -33,7 +35,9 @@ def long_act_detector(rect:rect_object,k_h,max_acc,t_s=0.1,a_cruise=0.1,delta_v=
              2      stand still
             -2      reversing
             -5      invalid
-    long_v: longitudinal speed                      tf.tensor [1,time_steps=91]
+    long_v: splined longitudinal speed                 tf.tensor [1,time_steps=91]
+    long_v1: not splined long. speed
+    knots:  #knots of splining
     """
     # sanity check
     assert k_h>1,f"Signal window must be greater than 1."
@@ -44,13 +48,15 @@ def long_act_detector(rect:rect_object,k_h,max_acc,t_s=0.1,a_cruise=0.1,delta_v=
     (long_v1,_) = rect.cordinate_rotate(rect.kinematics['velocity_x'],\
                                     rect.kinematics['velocity_y'],\
                                     rect.kinematics['vel_yaw'])
-    long_v = univariate_spline(long_v1.numpy(),valid,k)
+    
+    
+    long_v,knots = univariate_spline(long_v1.numpy(),valid,k,smoothing_factor)
     # correct the abnormal data with max acc/dec = 0.7m/s2
     # long_v = clean_abnormal_data(long_v,valid,t_s,max_acc=max_acc)
     # assert len(long_v)>0
     lo_act = np.zeros_like(long_v)
-    lo_act[:valid[0]] = np.nan
-    lo_act[valid[-1]+1:] = np.nan
+    lo_act[:valid[0]] = -5
+    lo_act[valid[-1]+1:] = -5
     # print(valid[-1])
 
     for i in range(valid[0],valid[-1]+1):
@@ -97,8 +103,11 @@ def long_act_detector(rect:rect_object,k_h,max_acc,t_s=0.1,a_cruise=0.1,delta_v=
 
     # reversing
     lo_act = np.where(long_v<-0.1,-2,lo_act)
+    
+    long_v[:valid[0]] = -5
+    long_v[valid[-1]+1:] = -5
 
-    return tf.convert_to_tensor(lo_act),long_v,long_v1
+    return lo_act,long_v,long_v1,knots
 
 def acceleration(valid_long_v,i,k_h,t_s,a_cruise,time_steps,delta_v):
     """
@@ -163,7 +172,7 @@ def end_long_activity(i,valid_end,k_h,valid_long_v,a_cruise,t_s,delta_v,ACC:bool
             return -1,i
     
 
-def removing_short_cruising_act(lo_act,long_v,i,non_cruise_ind,valid_start:np.float):
+def removing_short_cruising_act(lo_act,long_v,i,non_cruise_ind,valid_start:float):
     """
     TODO:think about input and output
 
