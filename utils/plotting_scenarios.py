@@ -49,23 +49,29 @@ def plot_all_scenarios(DATADIR,FILE,FILENUM,RESULT_DIR,RESULT_FILENAME,RESULT_SO
     actors_list = result['actors_list']
     inter_actor_relation = result['inter_actor_relation']
     actors_activity = result['actors_activity']
+    original_data_roadgragh,original_data_light = road_graph_parser(DATADIR,FILE)
+    static_element = StaticElementsWaymo(original_data_roadgragh,original_data_light)
+    static_element.create_polygon_set()
     for actor_type,agents in actors_list.items():
+        if isinstance(agents,int):
+            agents = [agents]
         for agent in agents:
-            # ###############################
-            # if agent!=0:
-            #     continue
-            # ###############################
+            ###############################
+            if agent!=0:
+                continue
+            ###############################
             agent_activity = actors_activity[actor_type][f"{actor_type}_{agent}_activity"]
             agent_interalation = inter_actor_relation[f"{actor_type}_{agent}"]
             agent_fig_path = mkdir(fig_file_path,f"{actor_type}_{agent}")
             agent_state,_ = rect_object_creator(actor_type,agent,DATADIR,FILE)
             validity_proportion = agent_state.data_preprocessing()
             solo_scenario = solo_scenarios[actor_type][f"{actor_type}_{agent}"]
-            _=plot_solo_scenario(f"{actor_type}_{agent}",agent_activity,agent_interalation,agent_state,DATADIR,FILE,solo_scenario,agent_fig_path)
+            _=plot_solo_scenario(f"{actor_type}_{agent}",agent_activity,agent_interalation,agent_state,DATADIR,FILE,solo_scenario,agent_fig_path,\
+                static_element,original_data_roadgragh,original_data_light)
     
     return 0
 
-def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATADIR,FILE,solo_scenario,agent_fig_path):
+def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATADIR,FILE,solo_scenario,agent_fig_path,s_e,o_d_r,o_d_l):
     """
     plot the scenarios for one agent
     """
@@ -75,76 +81,94 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     valid_start,valid_end = agent_state.get_validity_range()
     nrows,ncols = 1,2
     plt.rc('font',family='Times New Roman',size=font1['size'])
-    fig,axes = plt.subplots(nrows,ncols,figsize=(ncols*8,nrows*5))
-    ax_list = axes.flatten() #type:ignore
+    fig,axes1 = plt.subplots(nrows,ncols,figsize=(ncols*8,nrows*5))
+    ax_list1 = axes1.flatten() #type:ignore
     # Plot longitudinal velocity and activity
-    ax_list[0] = plot_actor_activity(agent_activity["long_v"],solo_scenario["lo"],\
-        valid_start,valid_end,ax_list[0],"Longitudinal velocity [m/s]","Longitudinal activity [-]","Longitudinal")
+    ax_list1[0] = plot_actor_activity(agent_activity["long_v"],solo_scenario["lo"],\
+        valid_start,valid_end,ax_list1[0],"Longitudinal velocity [m/s]","Longitudinal activity [-]","Longitudinal")
     # Plot longitudinal velocity and activity
-    ax_list[1] = plot_actor_activity(agent_activity["yaw_rate"],solo_scenario["la"],\
-        valid_start,valid_end,ax_list[1],"Yaw rate[rad/s]","Lateral activity [-]","Lateral")
+    ax_list1[1] = plot_actor_activity(agent_activity["yaw_rate"],solo_scenario["la"],\
+        valid_start,valid_end,ax_list1[1],"Yaw rate[rad/s]","Lateral activity [-]","Lateral")
     plt.tight_layout()
     plt.savefig(f"{agent_fig_path}\{agent}_activity.jpg",bbox_inches="tight")
     #################################
     ######  the second figure #######
     #################################
-    # plot colorful actual trajectory
-    nrows,ncols = 1,4
-    plt.rc('font',family='Times New Roman',size=font2['size'])
-    fig,axes = plt.subplots(nrows,ncols,figsize=(ncols*15,nrows*15))
-    ax_list = axes.flatten() #type:ignore
     actor_trajectory_polygon = agent_state.polygon_set()
-    ax_list[0],s_e,o_d_r,o_d_l = plot_road_graph(DATADIR,FILE,ax=ax_list[0])
-    ax_list[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list[0],"Actual trajectory",gradient=True,host=True,type_a=True)
-    handels,labels = ax_list[0].get_legend_handles_labels()
-    by_label = OrderedDict(zip(labels,handels))
-    ax_list[0].legend(by_label.values(),by_label.keys(),loc="upper right",prop=font2)
-    ax_list[0] = set_scaling_2(ax_list[0],agent_state,valid_start,valid_end)
-    # plot relation with static elements
-    _ = agent_state.expanded_polygon_set(TTC=TTC_1,sampling_fq=10)
-    actor_expanded_multipolygon = agent_state.expanded_multipolygon
-    ax_list[1],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list[1],static_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
-    ax_list[1] = plot_actor_polygons(actor_expanded_multipolygon,valid_start,valid_end,ax_list[1],"Extended trajectory host",gradient=False,host=True,type_a=False)
-    ax_list[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list[1],"Actual trajectory host",gradient=False,host=True,type_a=True)
-    handels,labels = ax_list[1].get_legend_handles_labels()
-    by_label = OrderedDict(zip(labels,handels))
-    ax_list[1].legend(by_label.values(),by_label.keys(),loc="upper right",prop=font2)
-    # ax_list[1] = set_scaling(ax_list[1])
+    # plot colorful actual trajectory
+    nrows,ncols = 1,2
+    plt.rc('font',family='Times New Roman',size=font2['size'])
+    fig2,axes2 = plt.subplots(nrows,ncols,figsize=(ncols*15,nrows*15))
+    ax_list2 = axes2.flatten() #type:ignore
     # extended trajectory pologons
     etp = agent_state.expanded_polygon_set(TTC=TTC_2,sampling_fq=10)
     # generate the extended bounding boxes
     ebb = agent_state.expanded_bbox_list(expand=bbox_extension)
     # plot band relations type 1
-    ax_list[2],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list[2],static_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
+    ax_list2[0],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list2[0],static_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
     # plot band relations type 2
-    ax_list[3],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list[3],static_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
-    ax_list[2] = plot_actor_polygons(etp,valid_start,valid_end,ax_list[2],f"ETP host:{agent}",gradient=False,host=True,type_a=False)
-    ax_list[3] = plot_actor_polygons(ebb,valid_start,valid_end,ax_list[3],f"EBB host:{agent}",gradient=False,host=True,type_a=False)
-    ax_list[2] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list[2],f"Actual host:{agent}",gradient=False,host=True,type_a=True)
-    ax_list[3] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list[3],f"Actual host:{agent}",gradient=False,host=True,type_a=True)
+    ax_list2[1],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list2[1],static_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
     actor_dict = {"vehicle":1,"pedestrian":2,"cyclist":3}
     for key in agent_interalation:
         guest_type,guest_id = key.split("_")
         guest_state,_ = rect_object_creator(actor_dict[guest_type],int(guest_id),DATADIR,FILE)
-        validity_proportion = guest_state.data_preprocessing()
+        _ = guest_state.data_preprocessing()
         guest_trajectory_polygon = guest_state.polygon_set()
         # extended trajectory pologons
         guest_etp = guest_state.expanded_polygon_set(TTC=TTC_2,sampling_fq=10)
         # generate the extended bounding boxes
         guest_ebb = guest_state.expanded_bbox_list(expand=bbox_extension)
         guest_v_s,guest_v_e = guest_state.get_validity_range()
-        ax_list[2] = plot_actor_polygons(guest_etp,guest_v_s,guest_v_e,ax_list[2],f"ETP guest:{guest_type}",gradient=False,host=False,type_a=False)
-        ax_list[3] = plot_actor_polygons(guest_ebb,guest_v_s,guest_v_e,ax_list[3],f"EBB guset:{guest_type}",gradient=False,host=False,type_a=False)
-        ax_list[2] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list[2],f"Actual guest:{guest_type}",gradient=False,host=False,type_a=True)
-        ax_list[3] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list[3],f"Actual guest:{guest_type}",gradient=False,host=False,type_a=True)
-    handels,labels = ax_list[2].get_legend_handles_labels()
+        ax_list2[0] = plot_actor_polygons(guest_etp,guest_v_s,guest_v_e,ax_list2[0],f"ETP guest:{guest_type}",gradient=False,host=False,type_a=False)
+        ax_list2[1] = plot_actor_polygons(guest_ebb,guest_v_s,guest_v_e,ax_list2[1],f"EBB guset:{guest_type}",gradient=False,host=False,type_a=False)
+        ax_list2[0] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list2[0],f"Actual guest:{guest_type}",gradient=False,host=False,type_a=True)
+        ax_list2[1] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list2[1],f"Actual guest:{guest_type}",gradient=False,host=False,type_a=True)
+    ax_list2[0] = plot_actor_polygons(etp,valid_start,valid_end,ax_list2[0],f"ETP host:{agent}",gradient=False,host=True,type_a=False)
+    ax_list2[1] = plot_actor_polygons(ebb,valid_start,valid_end,ax_list2[1],f"EBB host:{agent}",gradient=False,host=True,type_a=False)
+    ax_list2[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list2[0],f"Actual host:{agent}",gradient=False,host=True,type_a=True)
+    ax_list2[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list2[1],f"Actual host:{agent}",gradient=False,host=True,type_a=True)
+    handels,labels = [],[]
+    ax_handels,ax_labels = ax_list2[0].get_legend_handles_labels()
+    handels.extend(ax_handels)
+    labels.extend(ax_labels)
+    ax_handels,ax_labels = ax_list2[1].get_legend_handles_labels()
+    handels.extend(ax_handels)
+    labels.extend(ax_labels)
     by_label = OrderedDict(zip(labels,handels))
-    ax_list[2].legend(by_label.values(),by_label.keys(),prop=font2,ncol=1)
-    handels,labels = ax_list[3].get_legend_handles_labels()
+    # ax_list2[0].legend(by_label.values(),by_label.keys(),prop=font2,ncol=1)
+    # handels,labels = ax_list2[0].get_legend_handles_labels()
+    # by_label = OrderedDict(zip(labels,handels))
+    # ax_list2[0].legend(by_label.values(),by_label.keys(),prop=font2,ncol=1)
+    axbox = ax_list2[1].get_position()
+    ax_list2[0].legend().remove()
+    ax_list2[1].legend().remove()
+    fig.legend(by_label.values(),by_label.keys(),loc='upper right',ncol=1,
+           bbox_to_anchor=(axbox.x0+1.6*axbox.width,axbox.y0+1*axbox.height),)
+    plt.tight_layout()
+    plt.savefig(f"{agent_fig_path}\{agent}_inter_actor.jpg",bbox_inches="tight")
+    #################################
+    ######  the third figure #######
+    #################################
+    # plot colorful actual trajectory
+    nrows,ncols = 1,2
+    plt.rc('font',family='Times New Roman',size=font2['size'])
+    fig3,axes3 = plt.subplots(nrows,ncols,figsize=(ncols*15,nrows*15))
+    ax_list3 = axes3.flatten() #type:ignore
+    ax_list3[0],s_e,o_d_r,o_d_l = plot_road_graph(DATADIR,FILE,ax=ax_list3[0],static_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
+    ax_list3[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[0],"Actual trajectory",gradient=True,host=True,type_a=True)
+    handels,labels = ax_list3[0].get_legend_handles_labels()
     by_label = OrderedDict(zip(labels,handels))
-    ax_list[3].legend(by_label.values(),by_label.keys(),prop=font2,ncol=1)
-    for i in range(len(ax_list)):
-        ax_list[i].tick_params(labelsize=font2['size']) 
+    ax_list3[0].legend(by_label.values(),by_label.keys(),loc="upper right",prop=font2)
+    ax_list3[0] = set_scaling_2(ax_list3[0],agent_state,valid_start,valid_end)
+    # plot relation with static elements
+    _ = agent_state.expanded_polygon_set(TTC=TTC_1,sampling_fq=10)
+    actor_expanded_multipolygon = agent_state.expanded_multipolygon
+    ax_list3[1],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list3[1],static_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
+    ax_list3[1] = plot_actor_polygons(actor_expanded_multipolygon,valid_start,valid_end,ax_list3[1],"Extended trajectory host",gradient=False,host=True,type_a=False)
+    ax_list3[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[1],"Actual trajectory host",gradient=False,host=True,type_a=True)
+    handels,labels = ax_list3[1].get_legend_handles_labels()
+    by_label = OrderedDict(zip(labels,handels))
+    ax_list3[1].legend(by_label.values(),by_label.keys(),loc="upper right",prop=font2)
     plt.tight_layout()
     plt.savefig(f"{agent_fig_path}\{agent}_roadgraph.jpg",bbox_inches="tight")
     return 0
