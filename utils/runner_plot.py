@@ -20,20 +20,15 @@ parser.add_argument('--file', type=str, required=True, help='#file to plot.e.g.:
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    start1 = time.perf_counter()
     FILENUM = args.file
     FILE = f"training_tfexample.tfrecord-{FILENUM}-of-01000"
     RESULT_FILENAME = f'Waymo_{FILENUM}_{RESULT_TIME}_tag.json'
     RESULT_SOLO = f'Waymo_{FILENUM}_{RESULT_TIME}_solo.json'
     # sanity check
     FILENAME = os.path.join(DATADIR,FILE)
-    start2 = time.perf_counter()
     if os.path.exists(FILENAME):
         print(f"Plotting:{FILE}")
         _=plot_all_scenarios(DATADIR,FILE,FILENUM,RESULTDIR,RESULT_FILENAME,RESULT_SOLO,FIGDIR)
-        
     else:
         print(f"File not found:{FILE}")
-    end1 = time.perf_counter()
-    print(f"Time1 elapsed:{end1-start1:2f}s")
-    print(f"Time2 elapsed:{end1-start2:2f}s")
+
