@@ -56,10 +56,6 @@ def plot_all_scenarios(DATADIR,FILE,FILENUM,RESULT_DIR,RESULT_FILENAME,RESULT_SO
         if isinstance(agents,int):
             agents = [agents]
         for agent in agents:
-            ###############################
-            if agent!=0:
-                continue
-            ###############################
             agent_activity = actors_activity[actor_type][f"{actor_type}_{agent}_activity"]
             agent_interalation = inter_actor_relation[f"{actor_type}_{agent}"]
             agent_fig_path = mkdir(fig_file_path,f"{actor_type}_{agent}")
@@ -119,14 +115,14 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
         # generate the extended bounding boxes
         guest_ebb = guest_state.expanded_bbox_list(expand=bbox_extension)
         guest_v_s,guest_v_e = guest_state.get_validity_range()
-        ax_list2[0] = plot_actor_polygons(guest_etp,guest_v_s,guest_v_e,ax_list2[0],f"ETP guest:{guest_type}",gradient=False,host=False,type_a=False)
-        ax_list2[1] = plot_actor_polygons(guest_ebb,guest_v_s,guest_v_e,ax_list2[1],f"EBB guset:{guest_type}",gradient=False,host=False,type_a=False)
-        ax_list2[0] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list2[0],f"Actual guest:{guest_type}",gradient=False,host=False,type_a=True)
-        ax_list2[1] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list2[1],f"Actual guest:{guest_type}",gradient=False,host=False,type_a=True)
-    ax_list2[0] = plot_actor_polygons(etp,valid_start,valid_end,ax_list2[0],f"ETP host:{agent}",gradient=False,host=True,type_a=False)
-    ax_list2[1] = plot_actor_polygons(ebb,valid_start,valid_end,ax_list2[1],f"EBB host:{agent}",gradient=False,host=True,type_a=False)
-    ax_list2[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list2[0],f"Actual host:{agent}",gradient=False,host=True,type_a=True)
-    ax_list2[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list2[1],f"Actual host:{agent}",gradient=False,host=True,type_a=True)
+        ax_list2[0] = plot_actor_polygons(guest_etp,guest_v_s,guest_v_e,ax_list2[0],f"ETP guest",gradient=False,host=False,type_a=False)
+        ax_list2[1] = plot_actor_polygons(guest_ebb,guest_v_s,guest_v_e,ax_list2[1],f"EBB guset",gradient=False,host=False,type_a=False)
+        ax_list2[0] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list2[0],f"Actual guest",gradient=False,host=False,type_a=True)
+        ax_list2[1] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list2[1],f"Actual guest",gradient=False,host=False,type_a=True)
+    ax_list2[0] = plot_actor_polygons(etp,valid_start,valid_end,ax_list2[0],f"ETP host",gradient=False,host=True,type_a=False)
+    ax_list2[1] = plot_actor_polygons(ebb,valid_start,valid_end,ax_list2[1],f"EBB host",gradient=False,host=True,type_a=False)
+    ax_list2[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list2[0],f"Actual host",gradient=False,host=True,type_a=True)
+    ax_list2[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list2[1],f"Actual host",gradient=False,host=True,type_a=True)
     handels,labels = [],[]
     ax_handels,ax_labels = ax_list2[0].get_legend_handles_labels()
     handels.extend(ax_handels)
@@ -142,8 +138,8 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     axbox = ax_list2[1].get_position()
     ax_list2[0].legend().remove()
     ax_list2[1].legend().remove()
-    fig.legend(by_label.values(),by_label.keys(),loc='upper right',ncol=1,
-           bbox_to_anchor=(axbox.x0+1.6*axbox.width,axbox.y0+1*axbox.height),)
+    fig2.legend(by_label.values(),by_label.keys(),loc='upper right',ncol=1,
+           bbox_to_anchor=(axbox.x0+1.7*axbox.width,axbox.y0+1*axbox.height))
     plt.tight_layout()
     plt.savefig(f"{agent_fig_path}\{agent}_inter_actor.jpg",bbox_inches="tight")
     #################################
