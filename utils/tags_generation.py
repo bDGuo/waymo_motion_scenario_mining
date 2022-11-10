@@ -48,7 +48,6 @@ def generate_tags(DATADIR:str,FILE:str):
         agent_type = actor_dict[actor_type]
         # TODO:CHANGE NAME TO get_agents
         agent_list = get_agent_list(agent_type,DATADIR,FILE)
-        agent_list_2 = agent_list.copy()
         ##############################################
         actor_activity = {}
         actor_static_element_intersection = {}
@@ -57,6 +56,7 @@ def generate_tags(DATADIR:str,FILE:str):
             print(f"Processing {actor_type} with {len(agent_list)} agents...")
         else:
             print(f"Processing {actor_type} with {agent_list.shape[0]} agents...")
+        agent_list_2 = agent_list.copy()
         for agent in agent_list:
             agent_activity = {}
             agent_static_element_intersection = {}
@@ -205,8 +205,11 @@ def generate_tags(DATADIR:str,FILE:str):
                         'trajectory_ratio':agent_controlled_lane_intersection_trajectory_ratio
                     }
             actor_static_element_intersection[agent_key] = agent_static_element_intersection
-            road_graph_plot_flag=0        
-        actors_list[actor_type] = agent_list_2.tolist()
+            road_graph_plot_flag=0 
+        if not isinstance(agent_list_2,list):     
+            actors_list[actor_type] = agent_list_2
+        else:
+            actors_list[actor_type] = agent_list_2.tolist()
         actors_activity[actor_type] = actor_activity
         actors_static_element_intersection[actor_type] = actor_static_element_intersection
     inter_actor_relation = __generate_inter_actor_relation(agent_pp_state_list)
