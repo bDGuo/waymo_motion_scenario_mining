@@ -20,8 +20,8 @@ def get_parsed_data(DATADIR,FILE):
 def get_agent_list(agent_type:int,DATADIR,FILE):
     parsed = get_parsed_data(DATADIR,FILE)
     # a tensor for corresponding agent type
-    agent_indices_ts = tf.where(parsed['state/type']==agent_type)
-    return agent_indices_ts.numpy().squeeze()
+    return tf.where(parsed['state/type']==agent_type).numpy().squeeze()
+
 
 def rect_object_creator(agent_type:int, choice:int,DATADIR,FILE):
     """
