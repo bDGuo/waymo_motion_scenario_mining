@@ -16,6 +16,7 @@ from helpers.diverse_plot import plot_road_lines,create_figure_and_axes
 from static_elements import StaticElementsWaymo
 from create_rect_from_file import rect_object_creator
 from tags_dict import lo_act_dict,la_act_dict
+from shapely.ops import unary_union
 
 font1 = {'family' : 'Times New Roman','weight' : 'normal','size':20}
 font2 = {'family' : 'Times New Roman','weight' : 'normal','size':30}
@@ -56,6 +57,10 @@ def plot_all_scenarios(DATADIR,FILE,FILENUM,RESULT_DIR,RESULT_FILENAME,RESULT_SO
         if isinstance(agents,int):
             agents = [agents]
         for agent in agents:
+            ##################################
+            # if agent not in [0,106,5,19,32,44]:
+            #     continue
+            ##################################
             agent_activity = actors_activity[actor_type][f"{actor_type}_{agent}_activity"]
             agent_interalation = inter_actor_relation[f"{actor_type}_{agent}"]
             agent_fig_path = mkdir(fig_file_path,f"{actor_type}_{agent}")
@@ -87,6 +92,7 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
         valid_start,valid_end,ax_list1[1],"Yaw rate[rad/s]","Lateral activity [-]","Lateral")
     plt.tight_layout()
     plt.savefig(f"{agent_fig_path}\{agent}_activity.jpg",bbox_inches="tight")
+    plt.close()
     #################################
     ######  the second figure #######
     #################################
@@ -139,13 +145,14 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     ax_list2[0].legend().remove()
     ax_list2[1].legend().remove()
     fig2.legend(by_label.values(),by_label.keys(),loc='upper right',ncol=1,
-           bbox_to_anchor=(axbox.x0+1.7*axbox.width,axbox.y0+1*axbox.height))
+           bbox_to_anchor=(axbox.x0+1.7*axbox.width,axbox.y0+1*axbox.height),markerscale=15)
     plt.tight_layout()
     plt.savefig(f"{agent_fig_path}\{agent}_inter_actor.jpg",bbox_inches="tight")
+    plt.close()
     #################################
     ######  the third figure #######
     #################################
-    # plot colorful actual trajectory
+    # plot colorful actual trajectory and relation with static elements
     nrows,ncols = 1,2
     plt.rc('font',family='Times New Roman',size=font2['size'])
     fig3,axes3 = plt.subplots(nrows,ncols,figsize=(ncols*15,nrows*15))
@@ -154,19 +161,19 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     ax_list3[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[0],"Actual trajectory",gradient=True,host=True,type_a=True)
     handels,labels = ax_list3[0].get_legend_handles_labels()
     by_label = OrderedDict(zip(labels,handels))
-    ax_list3[0].legend(by_label.values(),by_label.keys(),loc="upper right",prop=font2)
+    ax_list3[0].legend(by_label.values(),by_label.keys(),loc="upper right",markerscale=15,prop=font2)
     ax_list3[0] = set_scaling_2(ax_list3[0],agent_state,valid_start,valid_end)
     # plot relation with static elements
-    _ = agent_state.expanded_polygon_set(TTC=TTC_1,sampling_fq=10)
-    actor_expanded_multipolygon = agent_state.expanded_multipolygon
+    actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1,sampling_fq=10)
     ax_list3[1],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list3[1],static_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
     ax_list3[1] = plot_actor_polygons(actor_expanded_multipolygon,valid_start,valid_end,ax_list3[1],"Extended trajectory host",gradient=False,host=True,type_a=False)
     ax_list3[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[1],"Actual trajectory host",gradient=False,host=True,type_a=True)
     handels,labels = ax_list3[1].get_legend_handles_labels()
     by_label = OrderedDict(zip(labels,handels))
-    ax_list3[1].legend(by_label.values(),by_label.keys(),loc="upper right",prop=font2)
+    ax_list3[1].legend(by_label.values(),by_label.keys(),loc="upper right",markerscale=15,prop=font2)
     plt.tight_layout()
     plt.savefig(f"{agent_fig_path}\{agent}_roadgraph.jpg",bbox_inches="tight")
+    plt.close()
     return 0
 
 def plot_road_graph(DATADIR,FILE,ax,static_element=None,original_data_roadgragh=None,original_data_light=None):
@@ -196,11 +203,30 @@ def plot_road_graph(DATADIR,FILE,ax,static_element=None,original_data_roadgragh=
     ax.set_aspect('equal')
     # handels,labels = ax.get_legend_handles_labels()
     # by_label = OrderedDict(zip(labels,handels))
-    # ax.legend(by_label.values(),by_label.keys(),loc="upper right",markerscale=8.0,prop=font1)
+    # ax.legend(by_label.values(),by_label.keys(),loc="upper right",markerscale=15.0,prop=font1)
     return ax,static_element,original_data_roadgragh,original_data_light
 
-def plot_actor_polygons(actor_polygon:list,valid_start:int,valid_end:int,ax,polygon_label:str,gradient:bool=False,host:bool=True,type_a:bool=True):
+def plot_actor_polygons(actor_polygon,valid_start:int,valid_end:int,ax,polygon_label:str,gradient:bool=False,host:bool=True,type_a:bool=True,inter_actor:bool=False):
     colors = get_color_map(ax,valid_start,valid_end,gradient)
+    # if gradient:
+    #     for step in range(valid_start,valid_end+1):
+    #         actor_polygon_step = actor_polygon[step]
+    #         for actor_polygon_step_ in actor_polygon_step:
+    #             x,y = actor_polygon_step_.exterior.xy
+    #             if gradient:
+    #                 ax.fill(x,y,c=colors[step-valid_start])
+    # else:
+    #     if host and type_a:
+    #         color,transparency = actor_color['host_a']['color'],actor_color['host_a']['alpha']
+    #     elif host and not type_a:
+    #         color,transparency = actor_color['host_e']['color'],actor_color['host_e']['alpha']
+    #     elif not host and type_a:
+    #         color,transparency = actor_color['guest_a']['color'],actor_color['guest_a']['alpha']
+    #     else:
+    #         color,transparency = actor_color['guest_e']['color'],actor_color['guest_e']['alpha']
+    #     if inter_actor:
+    #         x,y = actor_polygon.exterior.xy
+    #         ax.fill(x,y,c=color,alpha=transparency,label=polygon_label)
     for step in range(valid_start,valid_end+1):
         actor_polygon_step = actor_polygon[step]
         if isinstance(actor_polygon_step,list):
@@ -253,14 +279,14 @@ def plot_actor_activity(data,activity,valid_start,valid_end,ax1,legend_data:str,
         color  = int(act_dict[values['event']])
         ax1.plot(time[values['start']:values['end']+1],\
             data[values['start']:values['end']+1],c=color_map[color],label=values['event'],linewidth=3)
-    ax1.set_xticks(np.arange(0,np.max(time),1),fontname = "Times New Roman",fontsize=font1['size'])
+    ax1.set_xticks(np.arange(0,np.max(time)+1,1))
     xlabel = 'time (s)'
     ax1.grid()
     handels,labels = ax1.get_legend_handles_labels()
     by_label = OrderedDict(zip(labels,handels))
-    ax1.legend(by_label.values(),by_label.keys(),markerscale=8.0,prop=font1)
-    ax1.set_xlabel(xlabel,fontdict=font1)
-    ax1.set_ylabel(legend_data,fontdict=font1)
+    ax1.legend(by_label.values(),by_label.keys(),markerscale=15.0)
+    ax1.set_xlabel(xlabel)
+    ax1.set_ylabel(legend_data)
     return ax1
 
 def plot_actor_activity_2(data,activity,valid_start,valid_end,ax1,ax2,legend_data:str,legend_activity:str,title:str):
@@ -297,7 +323,7 @@ def get_color_map(ax,valid_start,valid_end,gradient:bool=False,plot:bool=False):
         vs = np.linspace(valid_start,valid_end,valid_end-valid_start+1)
         vs = vs / 10
         norm = plt.Normalize(valid_start/10,valid_end/10) #type:ignore
-        color_map = plt.cm.jet #type:ignore
+        color_map = plt.cm.cool #type:ignore
         # plot one agent trajectory with rectangualrs
         sm = plt.cm.ScalarMappable(cmap=color_map, norm=norm) #type:ignore
         sm.set_array([])
@@ -306,7 +332,7 @@ def get_color_map(ax,valid_start,valid_end,gradient:bool=False,plot:bool=False):
         cb.set_ticks(np.linspace(np.min(vs),np.max(vs),9))
         ticks = cb.get_ticks()
         cblabels = np.linspace(valid_start,valid_end,len(ticks))/10
-        cblabels = [f"{i:.1f}" for i in cblabels]
+        cblabels = [f"{i:.2f}" for i in cblabels]
         cb.set_ticks(ticks,labels=cblabels,fontfamily=font2['family'],fontsize=font2['size'])
     else:
         vs = np.linspace(valid_start,valid_end,valid_end-valid_start+1)
@@ -322,29 +348,43 @@ def get_color_map(ax,valid_start,valid_end,gradient:bool=False,plot:bool=False):
 def set_scaling(ax):
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
-    xlim,ylim = get_scaling(xlim,ylim,5)
+    xlim,ylim = get_scaling(ax,xlim,ylim,5)
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
     return ax
 
-def get_scaling(xlim,ylim,factor):
-    center_y = (ylim[-1] + ylim[0]) / 2
-    center_x = (xlim[-1] + xlim[0]) / 2
+def get_scaling(ax,xlim,ylim,factor):
+    xlim_ = ax.get_xlim()
+    ylim_ = ax.get_ylim()
+    range_x_ = xlim_[-1] - xlim_[0]
+    range_y_ = ylim_[-1] - ylim_[0]
+    y_x_ratio = range_y_ / range_x_
     range_y = ylim[-1] - ylim[0]
     range_x = xlim[-1] - xlim[0]
-    width = max(range_y,range_x)
-    xlim = [center_x - width*factor/2,center_x + width*factor/2]
-    ylim = [center_y - width*factor/2,center_y + width*factor/2]
+    if not range_y:
+        range_y=1.0
+    if not range_x:
+        range_x=1.0
+    if range_x>range_y:
+        range_y = range_x * y_x_ratio
+    else:
+        range_x = range_y / y_x_ratio
+    center_y = (ylim[-1] + ylim[0]) / 2
+    center_x = (xlim[-1] + xlim[0]) / 2
+    xlim = [center_x - range_x*factor/2,center_x + range_x*factor/2]
+    ylim = [center_y - range_y*factor/2,center_y + range_y*factor/2]
+    range_y = ylim[-1] - ylim[0]
+    range_x = xlim[-1] - xlim[0]
+    if range_x>range_x_ or range_y>range_y_:
+        return xlim_,ylim_
     return xlim,ylim
 
 def set_scaling_2(ax,agent_state,valid_start,valid_end):
     position_x = agent_state.kinematics["x"].numpy().squeeze()[valid_start:valid_end+1]
     position_y = agent_state.kinematics["y"].numpy().squeeze()[valid_start:valid_end+1]
-    xlim,ylim = get_scaling([np.min(position_x),np.max(position_x)],[np.min(position_y),np.max(position_y)],40)
-    xlim_ = ax.get_xlim()
-    ylim_ = ax.get_ylim()
-    xlim = [max(xlim[0],xlim_[0]),min(xlim[1],xlim_[1])]
-    ylim = [max(ylim[0],ylim_[0]),min(ylim[1],ylim_[1])]
+    xlim,ylim = get_scaling(ax,[np.min(position_x),np.max(position_x)],[np.min(position_y),np.max(position_y)],40)
+    # xlim = [max(xlim[0],xlim_[0]),min(xlim[1],xlim_[1])]
+    # ylim = [max(ylim[0],ylim_[0]),min(ylim[1],ylim_[1])]
     ax.set_xlim(xlim)
     ax.set_ylim(ylim)
     return ax
