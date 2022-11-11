@@ -16,11 +16,13 @@ RESULT_TIME = f'2022-11-09-09_25'
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--file', type=str, required=True, help='#file to plot.e.g.:00003')
+parser.add_argument('--filenum', type=str, required=True, help='#file to plot.e.g.:00003')
+parser.add_argument('--result_time', type=str, required=True, help='#result time to plot.e.g.:2022-11-09-09_25')
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    FILENUM = args.file
+    FILENUM = args.filenum
+    RESULT_TIME = args.result_time
     FILE = f"training_tfexample.tfrecord-{FILENUM}-of-01000"
     RESULT_FILENAME = f'Waymo_{FILENUM}_{RESULT_TIME}_tag.json'
     RESULT_SOLO = f'Waymo_{FILENUM}_{RESULT_TIME}_solo.json'
