@@ -211,6 +211,8 @@ class StaticElementsWaymo:
                         else:
                             polygon_coordinates = [(object_type_pts[0,polygon_start],object_type_pts[1,polygon_start])]
                     for j,(pt_x_2,pt_y_2) in enumerate(zip(object_type_pts[0,:],object_type_pts[1,:])):
+                        if len(polygon_coordinates)==5:
+                            break
                         if i==j:
                             continue
                         if dir_x==0 and dir_y!=0:
@@ -222,7 +224,7 @@ class StaticElementsWaymo:
                                 polygon_coordinates.append((pt_x_2,pt_y_2))
                                 break
                         elif dir_x!=0 and dir_y!=0:
-                            if np.abs((pt_x_2-pt_x)/dir_x-(pt_y_2-pt_y)/dir_y) < 1e-1:
+                            if np.abs((pt_x_2-pt_x)/dir_x-(pt_y_2-pt_y)/dir_y) < 1e-2:
                                 polygon_coordinates.append((pt_x_2,pt_y_2))
                                 break
 
