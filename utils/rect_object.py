@@ -10,6 +10,7 @@ from math import cos, pi, sin
 from shapely.geometry import LineString,Polygon,Point,MultiPolygon
 from shapely.ops import unary_union
 import warnings
+from logger.logger import *
 
 
 class rect_object(ABC):
@@ -51,7 +52,7 @@ class rect_object(ABC):
         # find where data is invalid
         mask = np.where(self.validity.numpy().squeeze()!=1)[0] # [91,]
         valid = np.where(self.validity.numpy().squeeze()==1)[0] # [91,]
-        valid_length = len(valid[:])
+        valid_length = len(valid)
         appearance_start = valid[0]
         appearance_end = valid[-1]
         appearance_length = appearance_end-appearance_start+1
@@ -63,7 +64,7 @@ class rect_object(ABC):
             return 1
         validity_proportion = valid_length / appearance_length
         if validity_proportion < 0.5:
-            warnings.warn(f"Valid data proportion too small. Valid/total={validity_proportion:.2f}<50%.")
+            logger.warning(f"Valid data proportion too small. Valid/total={validity_proportion:.2f}<50%.")
         self.validity_ratio = validity_proportion 
 
 
