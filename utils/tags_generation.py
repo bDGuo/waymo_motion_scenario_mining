@@ -7,6 +7,8 @@ from shapely.ops import unary_union
 from static_elements import StaticElementsWaymo
 from long_activity_detector import long_act_detector
 from lateral_activity_detector import lat_act_detector
+import traceback
+from logger.logger import *
 
 # parameters
 max_acc = [0,0.7,0.2,0.4,0]
@@ -141,8 +143,11 @@ def generate_tags(DATADIR:str,FILE:str):
                     # intersection = unary_union(other_object_polygon_list).intersection(actor_trajectory_polygon_step).area
                     # intersection_expanded = unary_union(other_object_polygon_list).intersection(actor_expanded_multipolygon_step).area
                     for other_object_polygon in other_object_polygon_list:
-                        intersection_expanded += actor_expanded_multipolygon_step.intersection(other_object_polygon).area
-                        intersection += actor_trajectory_polygon_step.intersection(other_object_polygon).area
+                        try:
+                            intersection_expanded += actor_expanded_multipolygon_step.intersection(other_object_polygon).area
+                            intersection += actor_trajectory_polygon_step.intersection(other_object_polygon).area
+                        except Exception as e:
+                            logger.error(f"Error in intersection computation: {e}.\n type:{other_object_type},polygon:{other_object_polygon}")
                     agent_other_object_intersection_expanded[step]=intersection_expanded
                     agent_other_object_intersection_trajectory[step]=intersection
                     agent_other_object_intersection_expanded_ratio[step] = intersection_expanded/actor_expanded_multipolygon_step.area
@@ -205,8 +210,8 @@ def generate_tags(DATADIR:str,FILE:str):
                         'trajectory_ratio':agent_controlled_lane_intersection_trajectory_ratio
                     }
             actor_static_element_intersection[agent_key] = agent_static_element_intersection
-            road_graph_plot_flag=0 
-        if not isinstance(agent_list_2,list):     
+            road_graph_plot_flag=0
+        if isinstance(agent_list_2,list):    
             actors_list[actor_type] = agent_list_2
         else:
             actors_list[actor_type] = agent_list_2.tolist()
