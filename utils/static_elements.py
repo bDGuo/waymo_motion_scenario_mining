@@ -188,30 +188,47 @@ class StaticElementsWaymo:
                                 break
 
     def __create_other_object_polygon_set(self,roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz):
+
+        # line range for finding colinear points
+        line_range = 20
+        tolerance = 1e-5
         # create the crosswalk and speed bump polygon set
         for key in self.other_object_type:
             object_type_mask = np.where((roadgraph_type[:,0]==self.other_object_type[key]))[0]
             object_type_pts = roadgraph_xyz[object_type_mask,:2].T
             object_type_dir = roadgraph_dir_xyz[object_type_mask,:2].T
+            found_pts = []
             if len(object_type_mask):
+                # TODO: recursively find the polygon points
+                # for i,(pt_x,pt_y,dir_x,dir_y) in enumerate(zip(object_type_pts[0,:],object_type_pts[1,:],object_type_dir[0,:],object_type_dir[1,:])):
+                #     if i in found_pts:
+                #         continue
+                #     else:
+                #         point_1 = Point(pt_x,pt_y)
+                #         result = [point_1]
+                #         found_pts = [i]
+                #         result,found_pts = self.__found_other_object_polygon(i,pt_x,pt_y,dir_x,dir_y,line_range,object_type_pts[0,i+1],object_type_pts[1,i+1],tolerance,result,found_pts)
+                # pass
                 polygon_start = 0
                 polygon_coordinates =  [(object_type_pts[0,polygon_start],object_type_pts[1,polygon_start])]
+                tolerance = 1e-5
                 for i,(pt_x,pt_y,dir_x,dir_y) in enumerate(zip(object_type_pts[0,:],object_type_pts[1,:],object_type_dir[0,:],object_type_dir[1,:])):
+                    # dir_y==dir_x==0 means the end of the polygon
                     if dir_y==0 and dir_x==0:
-                        polygon_start = i+1
-                        if len(polygon_coordinates)>1:
+                        # plolygon should have at least 3 points
+                        if len(polygon_coordinates)>=3:
                             object_polygon = Polygon(polygon_coordinates)
                             self.other_object[key].append(object_polygon)
-                        # for cross walk or other objects, a single point is meaningless
                         else:
                             pass
+                        #check if the next point is the last second point,then break;else continue with a new polygon
                         polygon_start = i+1
                         if polygon_start == len(object_type_pts[0,:]):
                             break
                         else:
                             polygon_coordinates = [(object_type_pts[0,polygon_start],object_type_pts[1,polygon_start])]
                     for j,(pt_x_2,pt_y_2) in enumerate(zip(object_type_pts[0,:],object_type_pts[1,:])):
-                        if len(polygon_coordinates)==5:
+                        if len(polygon_coordinates)==4:
                             break
                         if i==j:
                             continue
@@ -224,10 +241,29 @@ class StaticElementsWaymo:
                                 polygon_coordinates.append((pt_x_2,pt_y_2))
                                 break
                         elif dir_x!=0 and dir_y!=0:
-                            if np.abs((pt_x_2-pt_x)/dir_x-(pt_y_2-pt_y)/dir_y) < 1e-2:
+                            if np.abs((pt_x_2-pt_x)/dir_x-(pt_y_2-pt_y)/dir_y) < tolerance:
                                 polygon_coordinates.append((pt_x_2,pt_y_2))
                                 break
 
+    def __found_other_object_polygon(self,index:int,pt_x:float,pt_y:float,dir_x:float,dir_y:float,object_range:float,pt_x_2:float,pt_y_2:float,tolerance:float,result,found_pts):
+        line_1 = LineString([(pt_x-object_range*dir_x,pt_y-object_range*dir_x),(pt_x+dir_x,pt_y+dir_y)])
+        point_2 = Point(pt_x_2,pt_y_2)
+        if len(result)>=4:
+            return result
+        else:
+            if self.__determine_colinear_points(line_1,point_2,tolerance):
+                result.append(point_2)
+                found_pts.append(index)
+                return result
+
+        pass
+
+    def __determine_colinear_points(self,line_1,point_2,tolerance:float)->bool:
+        if line_1.distance(point_2)<tolerance:
+            return True
+        else:
+            return False
+        
     def __reducing_traffic_lights_dim(self):
         self.traffic_lights['traffic_lights_state'] = self.original_data_light['traffic_lights_state']
         self.traffic_lights['traffic_lights_lane_id'] = self.original_data_light['traffic_lights_id']
