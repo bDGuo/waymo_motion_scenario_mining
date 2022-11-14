@@ -174,7 +174,10 @@ def end_long_activity(i,valid_end,k_h,valid_long_v,a_cruise,t_s,delta_v,ACC:bool
 
 def removing_short_cruising_act(lo_act,long_v,i,non_cruise_ind,valid_start:float):
     """
-    TODO:think about input and output
+    remove short cruising activities
+    e.g.
+    -1 0...0 1 => -1 -1 -1 ... 1 1 1
+    vice versa
 
     """
     if lo_act[non_cruise_ind[i]] == lo_act[non_cruise_ind[i+1]]:
