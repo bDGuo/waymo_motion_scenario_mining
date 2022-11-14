@@ -144,7 +144,7 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     axbox = ax_list2[1].get_position()
     ax_list2[0].legend().remove()
     ax_list2[1].legend().remove()
-    fig2.legend(by_label.values(),by_label.keys(),loc='upper right',ncol=1,
+    fig2.legend(by_label.values(),by_label.keys(),ncol=1,
            bbox_to_anchor=(axbox.x0+1.7*axbox.width,axbox.y0+1*axbox.height),markerscale=15)
     plt.tight_layout()
     plt.savefig(f"{agent_fig_path}\{agent}_inter_actor.jpg",bbox_inches="tight")
@@ -161,7 +161,7 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     ax_list3[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[0],"Actual trajectory",gradient=True,host=True,type_a=True)
     handels,labels = ax_list3[0].get_legend_handles_labels()
     by_label = OrderedDict(zip(labels,handels))
-    ax_list3[0].legend(by_label.values(),by_label.keys(),loc="upper right",markerscale=15,prop=font2)
+    ax_list3[0].legend(by_label.values(),by_label.keys(),markerscale=15,prop=font2)
     ax_list3[0] = set_scaling_2(ax_list3[0],agent_state,valid_start,valid_end)
     # plot relation with static elements
     actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1,sampling_fq=10)
@@ -170,7 +170,7 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     ax_list3[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[1],"Actual trajectory host",gradient=False,host=True,type_a=True)
     handels,labels = ax_list3[1].get_legend_handles_labels()
     by_label = OrderedDict(zip(labels,handels))
-    ax_list3[1].legend(by_label.values(),by_label.keys(),loc="upper right",markerscale=15,prop=font2)
+    ax_list3[1].legend(by_label.values(),by_label.keys(),markerscale=15,prop=font2)
     plt.tight_layout()
     plt.savefig(f"{agent_fig_path}\{agent}_roadgraph.jpg",bbox_inches="tight")
     plt.close()
@@ -244,7 +244,7 @@ def plot_actor_polygons(actor_polygon,valid_start:int,valid_end:int,ax,polygon_l
                     else:
                         color,transparency = actor_color['guest_e']['color'],actor_color['guest_e']['alpha']
                     ax.fill(x,y,c=color,alpha=transparency,label=polygon_label)
-        else:
+        elif actor_polygon_step.__class__.__name__ =='Polygon':
             x,y = actor_polygon_step.exterior.xy
             if gradient:
                 ax.fill(x,y,c=colors[step-valid_start])
@@ -258,6 +258,22 @@ def plot_actor_polygons(actor_polygon,valid_start:int,valid_end:int,ax,polygon_l
                 else:
                     color,transparency = actor_color['guest_e']['color'],actor_color['guest_e']['alpha']
                 ax.fill(x,y,c=color,alpha=transparency,label=polygon_label)
+        elif actor_polygon_step.__class__.__name__ =='MultiPolygon':
+            for polygon in actor_polygon_step:
+                x,y = polygon.exterior.xy
+                if gradient:
+                    ax.fill(x,y,c=colors[step-valid_start])
+                else:
+                    if host and type_a:
+                        color,transparency = actor_color['host_a']['color'],actor_color['host_a']['alpha']
+                    elif host and not type_a:
+                        color,transparency = actor_color['host_e']['color'],actor_color['host_e']['alpha']
+                    elif not host and type_a:
+                        color,transparency = actor_color['guest_a']['color'],actor_color['guest_a']['alpha']
+                    else:
+                        color,transparency = actor_color['guest_e']['color'],actor_color['guest_e']['alpha']
+                    ax.fill(x,y,c=color,alpha=transparency,label=polygon_label)
+
     return ax
 
 def plot_actor_activity(data,activity,valid_start,valid_end,ax1,legend_data:str,legend_activity:str,title:str):
@@ -305,16 +321,10 @@ def plot_actor_activity_2(data,activity,valid_start,valid_end,ax1,ax2,legend_dat
     xlabel = 'time (s)'
     ax1.grid()
     ax2.grid()
-    ax1.legend(prop=font1)
-    ax2.legend(prop=font1)
     if legend_data == "Long. velocity":
         legend_data = f"{legend_data} [m/s]"
     else:
         legend_data = f"{legend_data} [rad/s]"
-    ax1.set_xlabel(xlabel,fontdict=font1)
-    ax2.set_xlabel(xlabel,fontdict=font1)
-    ax1.set_ylabel(legend_data,fontdict=font1)
-    ax2.set_ylabel(legend_activity,fontdict=font1)
     return ax1,ax2
 
 def get_color_map(ax,valid_start,valid_end,gradient:bool=False,plot:bool=False):
