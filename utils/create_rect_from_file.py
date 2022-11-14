@@ -16,7 +16,6 @@ def get_parsed_data(DATADIR,FILE):
     parsed = tf.io.parse_single_example(data, features_description)
     return parsed
     
-# TODO:CHANGE NAME TO get_agents
 def get_agent_list(agent_type:int,DATADIR,FILE):
     parsed = get_parsed_data(DATADIR,FILE)
     # a tensor for corresponding agent type
