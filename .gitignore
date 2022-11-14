@@ -11,6 +11,9 @@ notes/
 /.vscode
 log/
 deprecated/
+@Automation*
+*.bat
+
 
 
 
