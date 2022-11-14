@@ -105,13 +105,16 @@ def end_lateral_activity(future_yaw_valid_rate,threshold,current_yaw_dir,integra
     for i,yaw_rate in enumerate(future_yaw_valid_rate):
         if np.abs(yaw_rate) <= threshold:
             integration_yaw_rate = np.sum(future_yaw_valid_rate[:i]) * t_s * current_yaw_dir
+
             if integration_yaw_rate >= integration_threshold:
                return i
         if yaw_rate*current_yaw_dir < 0:
             integration_yaw_rate = np.sum(future_yaw_valid_rate[:i]) * t_s * current_yaw_dir
+
             if integration_yaw_rate >= integration_threshold:
                 return i
-    if np.sum(future_yaw_valid_rate)*t_s >= integration_threshold:
+
+    if np.sum(future_yaw_valid_rate)*t_s* current_yaw_dir >= integration_threshold:
         return len(future_yaw_valid_rate)
     else:
         return 0
