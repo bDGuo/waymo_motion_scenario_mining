@@ -27,15 +27,16 @@ smoothing_factor = time_steps / 2
 
 t_s = 0.1
 kernel = 6
-sampling_threshold = 5e-3
-integration_threshold = sampling_threshold*150 # 5e-3*150 = 0.75 rad. = 43 deg.
+sampling_threshold = 8.72e-2  # 
+time_steps = 91
+integration_threshold = sampling_threshold*9 # 8.72e-2*9 = 0.785 rad. = 44.97 deg.
 # parameter for estimation of the actor approaching a static element
 TTC_1 = 5
 # parameter for estimation of two actors' interaction
 TTC_2 = 9
 bbox_extension = 2 # extend length and width of the bbox by 2 times
 
-def generate_tags(DATADIR:str,FILE:str):
+def generate_tags(DATADIR,FILE:str):
     static_element = generate_lanes(DATADIR,FILE)
     lane_key = ['freeway','surface_street','bike_lane']
     other_object_key = ['cross_walk','speed_bump']
@@ -48,7 +49,6 @@ def generate_tags(DATADIR:str,FILE:str):
     agent_pp_state_list = []
     for actor_type in actor_dict:
         agent_type = actor_dict[actor_type]
-        # TODO:CHANGE NAME TO get_agents
         agent_list = get_agent_list(agent_type,DATADIR,FILE)
         ##############################################
         actor_activity = {}
@@ -121,7 +121,7 @@ def generate_tags(DATADIR:str,FILE:str):
                     agent_lane_intersection_expanded_ratio[step] = intersection_expanded/actor_expanded_multipolygon_step.area
                     agent_lane_intersection_trajectory_ratio[step] = intersection/actor_trajectory_polygon_step.area
                 agent_lane_relation = __compute_relation_actor_road_feature(valid_start,valid_end,agent_lane_intersection_trajectory_ratio,agent_lane_intersection_expanded_ratio)
-                # TODO:for efficiency, we can only store the intersection area when any of the two ratios is greater than zero
+                # for efficiency, we can only store the intersection area when any of the two ratios is greater than zero
                 agent_static_element_intersection[lane_type]={
                     'relation':agent_lane_relation,
                     'expanded':agent_lane_intersection_expanded,
@@ -147,7 +147,7 @@ def generate_tags(DATADIR:str,FILE:str):
                             intersection_expanded += actor_expanded_multipolygon_step.intersection(other_object_polygon).area
                             intersection += actor_trajectory_polygon_step.intersection(other_object_polygon).area
                         except Exception as e:
-                            logger.error(f"Error in intersection computation: {e}.\n type:{other_object_type},polygon:{other_object_polygon}")
+                            logger.error(f"FILE:{FILE},Intersection computation: {e}.\n type:{other_object_type},polygon:{other_object_polygon}")
                     agent_other_object_intersection_expanded[step]=intersection_expanded
                     agent_other_object_intersection_trajectory[step]=intersection
                     agent_other_object_intersection_expanded_ratio[step] = intersection_expanded/actor_expanded_multipolygon_step.area
