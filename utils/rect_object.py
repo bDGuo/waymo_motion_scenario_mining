@@ -59,7 +59,6 @@ class rect_object(ABC):
         # resize yaw angle in (0,2*pi) counter clockwise
         self.kinematics['bbox_yaw'] = self.__set_angel(self.kinematics['bbox_yaw'])
         self.kinematics['vel_yaw'] = self.__set_angel(self.kinematics['vel_yaw'])
-
         if len(mask)==0:
             return 1
         validity_proportion = valid_length / appearance_length
@@ -131,6 +130,7 @@ class rect_object(ABC):
         '''
         set the angle in (0,2*pi)
         '''
+
         return (angle+100*pi) % (2*pi)
 
     def __interpolation(self,data,mask,valid,VELOCITY:bool=False):
