@@ -1,5 +1,6 @@
 import logging
 import logging.config
+import logging.handlers
 from pathlib import Path
 
 
@@ -28,8 +29,9 @@ LOGGING_CONFIG = {
             "formatter": "plain"
         },
         "file":{
-            "class": "logging.FileHandler",
+            "class": "logging.handlers.TimedRotatingFileHandler",
             "level":20,
+            'when':'D',
             "filename": log_dir/"log.txt",
             "formatter": "default",
         }
