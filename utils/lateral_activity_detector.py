@@ -63,13 +63,17 @@ def lat_act_detector(rect:rect_object,t_s:float,threshold:float,integration_thre
     # size yaw angle in (0,2*pi) moved to data preprocessing
     # compute yaw rate [valid_length]
     bbox_yaw_valid = bbox_yaw[valid[0]:valid[-1]+1].copy()
-    bbox_yaw_valid_right_shift = np.insert(bbox_yaw_valid[:-1],0,bbox_yaw_valid[0])
-    bbox_yaw_rate[valid[0]:valid[-1]+1] = (bbox_yaw_valid-bbox_yaw_valid_right_shift)/ t_s
+    bbox_yaw_valid_rate = __compute_yaw_rate(bbox_yaw_valid) / t_s
+    bbox_yaw_rate[valid[0]:valid[-1]+1] = bbox_yaw_valid_rate.copy()
     bbox_yaw_rate,knots = univariate_spline(bbox_yaw_rate,valid,k,smoothing_factor)
     bbox_yaw_valid_rate = bbox_yaw_rate[valid[0]:valid[-1]+1].copy()
+    # bbox_yaw_valid_right_shift = np.insert(bbox_yaw_valid[:-1],0,bbox_yaw_valid[0])
+    # bbox_yaw_rate[valid[0]:valid[-1]+1] = (bbox_yaw_valid-bbox_yaw_valid_right_shift)/ t_s
+    # bbox_yaw_rate,knots = univariate_spline(bbox_yaw_rate,valid,k,smoothing_factor)
+    # bbox_yaw_valid_rate = bbox_yaw_rate[valid[0]:valid[-1]+1].copy()
 
-    # solve the rotation problem .i.e. 1.5pi => -0.5pi, -1.5pi => 0.5pi 
-    bbox_yaw_valid_rate = np.where(np.abs(bbox_yaw_valid_rate)>=pi,-np.sign(bbox_yaw_valid_rate)*(2*pi-np.abs(bbox_yaw_valid_rate)),bbox_yaw_valid_rate)
+    # # solve the rotation problem .i.e. 1.5pi => -0.5pi, -1.5pi => 0.5pi 
+    # bbox_yaw_valid_rate = np.where(np.abs(bbox_yaw_valid_rate)>=pi,-np.sign(bbox_yaw_valid_rate)*(2*pi-np.abs(bbox_yaw_valid_rate)),bbox_yaw_valid_rate)
 
     la_act_valid = la_act[valid[0]+1:valid[-1]+1].copy()
     
@@ -118,6 +122,18 @@ def end_lateral_activity(future_yaw_valid_rate,threshold,current_yaw_dir,integra
         return len(future_yaw_valid_rate)
     else:
         return 0
+
+def __compute_yaw_rate(bbox_yaw_valid):
+    """
+    1. rotate current yaw angle to the previous one
+    """
+    bbox_yaw_rate_valid = np.zeros_like(bbox_yaw_valid)
+    for i in range(1,len(bbox_yaw_valid)):
+        x,y = np.cos(bbox_yaw_valid[i]),np.sin(bbox_yaw_valid[i])
+        x_ = np.cos(bbox_yaw_valid[i-1])*x + np.sin(bbox_yaw_valid[i-1])*y
+        y_ = -np.sin(bbox_yaw_valid[i-1])*x + np.cos(bbox_yaw_valid[i-1])*y
+        bbox_yaw_rate_valid[i] = np.arctan2(y_,x_)
+    return bbox_yaw_rate_valid
 
 
 
