@@ -23,7 +23,7 @@ time_steps=91
 # degree of smoothing spline
 k=3
 # default smoothing factor is 
-smoothing_factor = time_steps / 2
+smoothing_factor = time_steps
 
 t_s = 0.1
 kernel = 6
