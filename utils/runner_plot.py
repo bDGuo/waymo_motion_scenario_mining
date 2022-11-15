@@ -16,7 +16,7 @@ from helpers.wechatter import wechatter
 
 ROOT = Path(__file__).parent.parent
 DATADIR = ROOT / "waymo_open_dataset/data/tf_example/training"
-FIGDIR = ROOT / "figures/scenarios/v2"
+FIGDIR = ROOT / "figures/scenarios/v3"
 RESULTDIR = ROOT / "results/v6"
 
 parser = argparse.ArgumentParser()
