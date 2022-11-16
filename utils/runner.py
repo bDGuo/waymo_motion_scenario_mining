@@ -13,6 +13,7 @@ from mining_scenarios import mine_solo_scenarios
 from rich.progress import track
 from logger.logger import *
 import traceback
+from helpers.wechatter import wechatter
 
 ROOT = Path(__file__).parent.parent
 DATADIR = ROOT / "waymo_open_dataset/data/tf_example/training"
@@ -65,6 +66,10 @@ if __name__ == '__main__':
             trace = traceback.format_exc()
             logger.error(f"FILE:{FILENUM}.\nTag generagtion:{e}")
             logger.error(f"trace:{trace}")
+    ################################################################################
+    # messager for finishing using wechat. Comment out this if you don't use wechat
+        wechatter(f"FILE:{FILENUM} finished.")
+    #################################################################################
     time_end = time.perf_counter()
     print(f"Time cost: {time_end-time_start:.2f}s.RESULTDIR: {RESULTDIR}")
     logger.info(f"Time cost: {time_end-time_start:.2f}s.RESULTDIR: {RESULTDIR}")
