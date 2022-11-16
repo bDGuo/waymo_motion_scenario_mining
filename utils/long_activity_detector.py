@@ -20,7 +20,6 @@ def long_act_detector(rect:rect_object,k_h,max_acc,t_s=0.1,a_cruise=0.1,delta_v=
                 of the dataset
     a_cruise:   maximum average acceleration               tf.float
                 default= 0.1 m/s^2
-
     delta_v:    minimm speed increase                     tf.float
                 default=1 m/s
     time_steps: num_steps in a state                       tf.int
@@ -72,7 +71,6 @@ def long_act_detector_core(long_v,valid,rect,k_h,t_s,a_cruise,time_steps,delta_v
             # print(f"i:{i},acc:{acc_bool},k_end:{k_end},valid start:{valid[0]}")
             i = k_end
             continue
-
         # deceleration check
         dec_bool = deceleration(long_v[valid[0]:valid[-1]+1],i-valid[0],k_h,t_s,a_cruise,time_steps,delta_v)
         if dec_bool:
@@ -86,11 +84,9 @@ def long_act_detector_core(long_v,valid,rect,k_h,t_s,a_cruise,time_steps,delta_v
         # start with 0..  
         if 0 < non_cruise_ind[0] - valid[0] < k_cruise:
             lo_act[valid[0]:non_cruise_ind[0]] = lo_act[non_cruise_ind[0]]
-
         # end with  cruise ..0 
         if 0 < valid[-1]-non_cruise_ind[-1]< k_cruise:
             lo_act[non_cruise_ind[-1]:valid[-1]+1] = lo_act[non_cruise_ind[-1]]
-
         for i in range(len(non_cruise_ind)-1):
             # check cruising activities shorter than k_cruise
             if (non_cruise_ind[i+1]-non_cruise_ind[i])>=k_cruise:
