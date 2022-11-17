@@ -22,9 +22,8 @@ k_h=6
 time_steps=91
 # degree of smoothing spline
 k=3
-# default smoothing factor is 
+# default smoothing factor
 smoothing_factor = time_steps
-
 t_s = 0.1
 kernel = 6
 sampling_threshold = 8.72e-2  # 
@@ -64,6 +63,8 @@ def generate_tags(DATADIR,FILE:str):
             agent_static_element_intersection = {}
             agent_state,_ = rect_object_creator(agent_type,agent,DATADIR,FILE)
             valid_start,valid_end = agent_state.get_validity_range()
+            # smoothing factor equals to the number of valid time steps
+            smoothing_factor = valid_end-valid_start + 1
             ###########################
             # not computing with only one step valid agent
             if valid_start == valid_end:
