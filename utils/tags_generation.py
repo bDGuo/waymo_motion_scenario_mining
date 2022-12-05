@@ -335,9 +335,6 @@ def __generate_inter_actor_relation(agent_pp_state_list:list):
             agent_ebb_2 = agent_pp_state_2.ebb
             relation = np.zeros(length)
             for step in range(length):
-                # print(len(agent_etp_1[step]))
-                # print(len(agent_etp_2[step]))
-                # print(step)
                 if agent_etp_1[step][0].area == 0 or agent_etp_2[step][0].area == 0:
                     continue
                 else:

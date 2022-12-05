@@ -104,14 +104,12 @@ def end_lateral_activity(future_yaw_valid_rate,threshold,current_yaw_dir,integra
 
 def __compute_yaw_rate(bbox_yaw_valid):
     """
-    1. rotate current yaw angle to the previous one
+    yaw rate in [-pi,pi]
     """
-    bbox_yaw_rate_valid = np.zeros_like(bbox_yaw_valid)
-    for i in range(1,len(bbox_yaw_valid)):
-        x,y = np.cos(bbox_yaw_valid[i]),np.sin(bbox_yaw_valid[i])
-        x_ = np.cos(bbox_yaw_valid[i-1])*x + np.sin(bbox_yaw_valid[i-1])*y
-        y_ = -np.sin(bbox_yaw_valid[i-1])*x + np.cos(bbox_yaw_valid[i-1])*y
-        bbox_yaw_rate_valid[i] = np.arctan2(y_,x_)
+    bbox_yaw_rate_valid = bbox_yaw_valid - np.insert(bbox_yaw_valid[1:],0,0)
+    bbox_yaw_rate_valid = np.where(np.abs(bbox_yaw_rate_valid)>np.pi,\
+                            bbox_yaw_rate_valid-np.sign(bbox_yaw_rate_valid)*2*np.pi,\
+                            bbox_yaw_rate_valid)
     return bbox_yaw_rate_valid
 
 
