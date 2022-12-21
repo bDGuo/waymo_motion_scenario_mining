@@ -8,13 +8,10 @@ from logger.logger import *
 from pathlib import Path
 from helpers.wechatter import wechatter
 
-# ROOT = os.path.abspath(os.path.dirname(""))
-# ROOT = os.path.dirname(ROOT)
-# DATADIR = os.path.join(ROOT,"waymo_open_dataset","data","tf_example","training")
-# FIGDIR = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(""))),r"figures\scenarios\v2")
-# RESULTDIR = os.path.join(os.path.dirname(os.path.abspath(os.path.dirname(""))),r"results\v4")
-
+# working directory
 ROOT = Path(__file__).parent.parent
+
+# modify the following two lines to your own data,figures, and result directory
 DATADIR = ROOT / "waymo_open_dataset/data/tf_example/training"
 FIGDIR = ROOT / "figures/scenarios/v3"
 RESULTDIR = ROOT / "results/v6"
@@ -38,7 +35,10 @@ if __name__ == "__main__":
         try:
             _=plot_all_scenarios(DATADIR,FILE,FILENUM,RESULTDIR,RESULT_FILENAME,RESULT_SOLO,FIGDIR)
         except Exception as e:
+            ##########################################
+            # messager for finishing one data record. Comment out this if you don't use wechat
             wechatter(f"Error in plotting {FILENUM}")
+            ##########################################
             logger.error(f"FILE: {FILENUM}.{e}")
     else:
         print(f"File not found:{FILE}")

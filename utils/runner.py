@@ -15,9 +15,13 @@ from logger.logger import *
 import traceback
 from helpers.wechatter import wechatter
 
+# working directory
 ROOT = Path(__file__).parent.parent
+
+# modify the following two lines to your own data and result directory
 DATADIR = ROOT / "waymo_open_dataset/data/tf_example/training"
 RESULTDIR = ROOT / "results/v6"
+
 DATADIR_WALK = DATADIR.iterdir()
 RESULT_TIME = time.strftime("%Y-%m-%d-%H_%M",time.localtime())
 
@@ -66,10 +70,10 @@ if __name__ == '__main__':
             trace = traceback.format_exc()
             logger.error(f"FILE:{FILENUM}.\nTag generagtion:{e}")
             logger.error(f"trace:{trace}")
-    ################################################################################
-    # messager for finishing using wechat. Comment out this if you don't use wechat
+    ############################################################################
+        # messager for finishing one data record. Comment out this if you don't use wechat
         wechatter(f"FILE:{FILENUM} finished.")
-    #################################################################################
+    ############################################################################
     time_end = time.perf_counter()
     print(f"Time cost: {time_end-time_start:.2f}s.RESULTDIR: {RESULTDIR}")
     logger.info(f"Time cost: {time_end-time_start:.2f}s.RESULTDIR: {RESULTDIR}")
