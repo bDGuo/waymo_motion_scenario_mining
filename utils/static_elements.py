@@ -49,9 +49,12 @@ class StaticElementsWaymo:
         self.original_data_light = original_data_light
         self.view_port = {}
         # following are the lane type set in the Waymo Motion Dataset
-        self.lane_type = {'freeway':1,'surface_street':2,'bike_lane':3}
-        self.lane_width ={'freeway':3.5,'surface_street':3.5,'bike_lane':1.5}
-        self.lane = {'freeway':[],'surface_street':[],'bike_lane':[]}
+        self.lane_type = {'freeway':1,'surface_street':2,'bike_lane':3,
+        'brokenSingleWhite':6,'brokenSingleYellow':9,'brokenDoubleYellow':10}
+        self.lane_width ={'freeway':3.5,'surface_street':3.5,'bike_lane':1.5,'brokenSingleWhite':0.1,'brokenSingleYellow':0.1,'brokenDoubleYellow':0.1}
+        self.lane = {'freeway':[],'surface_street':[],'bike_lane':[],'brokenSingleWhite':[],'brokenSingleYellow':[],'brokenDoubleYellow':[]}
+
+        
 
         # cross walk have no educated width, since their points are not sampled at 0.5m and they are just arcs of polygons
         self.other_object_type = {'cross_walk':18,'speed_bump':19}
