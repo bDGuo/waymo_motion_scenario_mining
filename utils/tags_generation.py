@@ -37,7 +37,7 @@ bbox_extension = 2 # extend length and width of the bbox by 2 times
 
 def generate_tags(DATADIR,FILE:str):
     static_element = generate_lanes(DATADIR,FILE)
-    lane_key = ['freeway','surface_street','bike_lane']
+    lane_key = ['freeway','surface_street','bike_lane','brokenSingleWhite','brokenSingleYellow','brokenDoubleYellow']
     other_object_key = ['cross_walk','speed_bump']
     controlled_lane = static_element.get_controlled_lane()
     actors_activity={} # [actor_type][actor_id][validity/lo_act/la_act]
