@@ -11,6 +11,9 @@ class StaticElementsWaymo:
     1 - freeway
     2 - surface street
     3 - bike lane
+    6 - broken single white
+    9 - broken single yellow
+    10 - broken double yellow
     18 - Crosswalk
     19 - Speed bump
     others - unknown
