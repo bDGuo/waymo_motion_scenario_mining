@@ -51,7 +51,7 @@ class StaticElementsWaymo:
         # following are the lane type set in the Waymo Motion Dataset
         self.lane_type = {'freeway':1,'surface_street':2,'bike_lane':3,
         'brokenSingleWhite':6,'brokenSingleYellow':9,'brokenDoubleYellow':10}
-        self.lane_width ={'freeway':3.5,'surface_street':3.5,'bike_lane':1.5,'brokenSingleWhite':0.1,'brokenSingleYellow':0.1,'brokenDoubleYellow':0.1}
+        self.lane_width ={'freeway':3.5,'surface_street':3.5,'bike_lane':1.5,'brokenSingleWhite':0.2,'brokenSingleYellow':0.2,'brokenDoubleYellow':0.2}
         self.lane = {'freeway':[],'surface_street':[],'bike_lane':[],'brokenSingleWhite':[],'brokenSingleYellow':[],'brokenDoubleYellow':[]}
 
         
