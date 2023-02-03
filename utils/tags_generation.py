@@ -43,8 +43,8 @@ def generate_tags(DATADIR,FILE:str):
     actors_activity={} # [actor_type][actor_id][validity/lo_act/la_act]
     actors_static_element_relation = {} #[actor_type][actor_id][lane_type]
     actors_static_element_intersection = {} #[actor_type][actor_id][lane_type][expanded/trajectory],value is a list of area of intersection
-    actors_list = {} #[actor_type]
-    AgentExtendedPolygons = namedtuple('AgentExtendedPolygons','type,key,etp,ebb,length')
+    actors_list = {} #[actor_type] 
+    AgentExtendedPolygons = namedtuple('AgentExtendedPolygons','type,key,etp,ebb,length,x,y')
     agent_pp_state_list = []
     for actor_type in actor_dict:
         agent_type = actor_dict[actor_type]
@@ -78,8 +78,13 @@ def generate_tags(DATADIR,FILE:str):
             etp = agent_state.expanded_multipolygon
             # generate the extended bounding boxes
             ebb = agent_state.expanded_bbox_list(expand=bbox_extension)
-            agent_extended_polygons = AgentExtendedPolygons(actor_type,agent_key,etp,ebb,time_steps)
+
+            x = agent_state.kinematics['x']
+            y = agent_state.kinematics['y']
+
+            agent_extended_polygons = AgentExtendedPolygons(actor_type,agent_key,etp,ebb,time_steps,x,y)
             agent_pp_state_list.append(agent_extended_polygons)
+            ######### long activity detection ###########
             lo_act,long_v,long_v1,knots = long_act_detector(agent_state,k_h,max_acc[agent_type],t_s=0.1,a_cruise=a_cruise[agent_type],\
                                             delta_v=delta_v[agent_type],time_steps=time_steps,k_cruise=10,\
                                             k=k,smoothing_factor=smoothing_factor)
@@ -88,6 +93,7 @@ def generate_tags(DATADIR,FILE:str):
             agent_activity['validity/appearance'] = validity_proportion
             agent_activity['lo_act'] = lo_act.tolist()
             agent_activity['long_v'] = long_v.tolist()
+            ##########  lane activity detection ##########
             la_act,bbox_yaw_rate = lat_act_detector(agent_state,t_s,sampling_threshold,integration_threshold,k=3,smoothing_factor=smoothing_factor)
             agent_activity['la_act'] = la_act.squeeze().tolist()
             agent_activity['yaw_rate'] = bbox_yaw_rate.squeeze().tolist()
@@ -110,9 +116,6 @@ def generate_tags(DATADIR,FILE:str):
                     actor_expanded_multipolygon_step = actor_expanded_multipolygon[step]
                     actor_trajectory_polygon_step = actor_trajectory_polygon[step]
                     intersection,intersection_expanded = 0,0
-                    
-                    # intersection = unary_union(lane_polygon_list).intersection(actor_trajectory_polygon_step).area
-                    # intersection_expanded = unary_union(lane_polygon_list).intersection(actor_expanded_multipolygon_step).area
                     
                     for lane_polygon in lane_polygon_list:
                         intersection_expanded += actor_expanded_multipolygon_step.intersection(lane_polygon).area
@@ -352,8 +355,13 @@ def __generate_inter_actor_relation(agent_pp_state_list:list):
                     elif not etp_flag and intersection_ebb:
                         relation[step] = 2
             if np.sum(relation):
-                inter_actor_relation[agent_key_1][agent_key_2] = relation.tolist()
+                inter_actor_relation[agent_key_1][agent_key_2]['relation'] = relation.tolist()
+                inter_actor_relation[agent_key_1][agent_key_2]['position'] = __compute_actor_position_relation()
+                #TODO: compute the position relation
     return inter_actor_relation
+
+def __compute_actor_position_relation():
+    pass
 
 
 
