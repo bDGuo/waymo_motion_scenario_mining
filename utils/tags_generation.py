@@ -44,7 +44,7 @@ def generate_tags(DATADIR,FILE:str):
     actors_static_element_relation = {} #[actor_type][actor_id][lane_type]
     actors_static_element_intersection = {} #[actor_type][actor_id][lane_type][expanded/trajectory],value is a list of area of intersection
     actors_list = {} #[actor_type] 
-    AgentExtendedPolygons = namedtuple('AgentExtendedPolygons','type,key,etp,ebb,length,x,y')
+    AgentExtendedPolygons = namedtuple('AgentExtendedPolygons','type,key,etp,ebb,length,x,y,theta')
     agent_pp_state_list = []
     for actor_type in actor_dict:
         agent_type = actor_dict[actor_type]
@@ -81,8 +81,9 @@ def generate_tags(DATADIR,FILE:str):
 
             x = agent_state.kinematics['x']
             y = agent_state.kinematics['y']
+            theta = agent_state.kinematics['bbox_yaw']
 
-            agent_extended_polygons = AgentExtendedPolygons(actor_type,agent_key,etp,ebb,time_steps,x,y)
+            agent_extended_polygons = AgentExtendedPolygons(actor_type,agent_key,etp,ebb,time_steps,x,y,theta)
             agent_pp_state_list.append(agent_extended_polygons)
             ######### long activity detection ###########
             lo_act,long_v,long_v1,knots = long_act_detector(agent_state,k_h,max_acc[agent_type],t_s=0.1,a_cruise=a_cruise[agent_type],\
@@ -337,6 +338,7 @@ def __generate_inter_actor_relation(agent_pp_state_list:list):
             agent_etp_2 = agent_pp_state_2.etp
             agent_ebb_2 = agent_pp_state_2.ebb
             relation = np.zeros(length)
+            position = np.zeros(length)
             for step in range(length):
                 if agent_etp_1[step][0].area == 0 or agent_etp_2[step][0].area == 0:
                     continue
@@ -354,14 +356,30 @@ def __generate_inter_actor_relation(agent_pp_state_list:list):
                         relation[step] = 1
                     elif not etp_flag and intersection_ebb:
                         relation[step] = 2
+                    position[step] = __compute_actor_position_relation(agent_pp_state_1,agent_pp_state_2)
+                    #TODO: compute the position relation
             if np.sum(relation):
                 inter_actor_relation[agent_key_1][agent_key_2]['relation'] = relation.tolist()
-                inter_actor_relation[agent_key_1][agent_key_2]['position'] = __compute_actor_position_relation()
-                #TODO: compute the position relation
+                inter_actor_relation[agent_key_1][agent_key_2]['position'] = position.tolist()
+
     return inter_actor_relation
 
-def __compute_actor_position_relation():
-    pass
+def __compute_actor_position_relation(agent_pp_state_1,agent_pp_state_2):
+    theta = agent_pp_state_1.theta
+    position_relation_vector = np.array([agent_pp_state_2.x-agent_pp_state_1.x,agent_pp_state_2.y-agent_pp_state_1.y])
+    heading_vector = np.array([np.cos(theta),np.sin(theta)])
+    cos_ = np.dot(position_relation_vector,heading_vector)/(np.linalg.norm(position_relation_vector))
+    sin_ = np.cross(position_relation_vector,heading_vector)/(np.linalg.norm(position_relation_vector))
+    if -0.25 * np.pi < np.arctan2(sin_,cos_) <= 0.25 * np.pi:
+        position_relation = 1 # head
+    elif 0.25 * np.pi < np.arctan2(sin_,cos_) <= 0.75 * np.pi:
+        position_relation = 2 # left
+    elif -0.75 * np.pi < np.arctan2(sin_,cos_) <= -0.25 * np.pi:
+        position_relation = 3 # right
+    else:
+        position_relation = 4 # rear
+    return position_relation
+    
 
 
 
