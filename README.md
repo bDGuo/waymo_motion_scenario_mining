@@ -5,7 +5,7 @@
 This repo contains a python implementation of VRU-related scenario mining for the dataset [Waymo Open Motion Dataset(WOMD)](https://waymo.com/open/data/motion).
 For each data record in WOMD there are two JSON files that describe the mined scenarios.
 - Waymo_#data_YYYY-MM-DD-HH_MM_**solo**.json
-- Waymo_#data_date-YYYY-MM-DD-HH_MM_**tag**.json
+- Waymo_#data_YYYY-MM-DD-HH_MM_**tag**.json
 
 ## Dataset
 
