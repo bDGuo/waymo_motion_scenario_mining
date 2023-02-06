@@ -356,28 +356,36 @@ def __generate_inter_actor_relation(agent_pp_state_list:list):
                         relation[step] = 1
                     elif not etp_flag and intersection_ebb:
                         relation[step] = 2
-                    position[step] = __compute_actor_position_relation(agent_pp_state_1,agent_pp_state_2)
+                    position[step] = __compute_actor_position_relation(agent_pp_state_1,agent_pp_state_2,step)
                     #TODO: compute the position relation
             if np.sum(relation):
+                inter_actor_relation[agent_key_1][agent_key_2] = {}
                 inter_actor_relation[agent_key_1][agent_key_2]['relation'] = relation.tolist()
                 inter_actor_relation[agent_key_1][agent_key_2]['position'] = position.tolist()
 
     return inter_actor_relation
 
-def __compute_actor_position_relation(agent_pp_state_1,agent_pp_state_2):
-    theta = agent_pp_state_1.theta
-    position_relation_vector = np.array([agent_pp_state_2.x-agent_pp_state_1.x,agent_pp_state_2.y-agent_pp_state_1.y])
+def __compute_actor_position_relation(agent_pp_state_1,agent_pp_state_2,step):
+    """
+    0 --- not related
+    1 --- front
+    2 --- left
+    3 --- right
+    4 --- back
+    """
+    theta = agent_pp_state_1.theta[step]
+    position_relation_vector = np.array([agent_pp_state_2.x[step]-agent_pp_state_1.x[step],agent_pp_state_2.y[step]-agent_pp_state_1.y[step]])
     heading_vector = np.array([np.cos(theta),np.sin(theta)])
     cos_ = np.dot(position_relation_vector,heading_vector)/(np.linalg.norm(position_relation_vector))
     sin_ = np.cross(position_relation_vector,heading_vector)/(np.linalg.norm(position_relation_vector))
     if -0.25 * np.pi < np.arctan2(sin_,cos_) <= 0.25 * np.pi:
-        position_relation = 1 # head
+        position_relation = 1 # front
     elif 0.25 * np.pi < np.arctan2(sin_,cos_) <= 0.75 * np.pi:
         position_relation = 2 # left
     elif -0.75 * np.pi < np.arctan2(sin_,cos_) <= -0.25 * np.pi:
         position_relation = 3 # right
     else:
-        position_relation = 4 # rear
+        position_relation = 4 # back
     return position_relation
     
 

@@ -1,4 +1,4 @@
-from tags_dict import lo_act_dict,la_act_dict,road_relation_dict,inter_actor_dict,light_state_dict
+from tags_dict import lo_act_dict,la_act_dict,road_relation_dict,inter_actor_relation_dict,inter_actor_position_dict,light_state_dict
 from collections import Iterable
 import os
 
@@ -43,9 +43,15 @@ def mine_solo_scenarios(tags_dict:dict)->dict:
             # inter-actor relation
             inter_actor = inter_actor_relation[agent_key]
             solo_scenarios[actor_type][agent_key]['inter_actor'] = {}
-            for (actor_name,relation) in inter_actor.items():
-                turning_points = __computing_turning_point(relation,valid_start,valid_end)
-                solo_scenarios[actor_type][agent_key]['inter_actor'][actor_name] = __summarizing_events(relation,turning_points,valid_start,valid_end,actor_name,inter_actor_dict)
+            for (actor_name,inter_actor_relation_position) in inter_actor.items():
+                solo_scenarios[actor_type][agent_key]['inter_actor'][actor_name] = {}
+                for (handel,value) in inter_actor_relation_position.items():
+                    turning_points = __computing_turning_point(value,valid_start,valid_end)
+                    if handel == 'position':
+                        inter_actor_dict = inter_actor_position_dict
+                    else:
+                        inter_actor_dict = inter_actor_relation_dict
+                    solo_scenarios[actor_type][agent_key]['inter_actor'][actor_name][handel] = __summarizing_events(value,turning_points,valid_start,valid_end,actor_name,inter_actor_dict)
     return solo_scenarios
 
 def __computing_turning_point(activity,valid_start:int,valid_end:int)->list:

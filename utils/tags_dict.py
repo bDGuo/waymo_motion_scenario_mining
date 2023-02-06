@@ -30,11 +30,18 @@ road_relation_dict = {
 "-5":'invalid'
 }
 
-inter_actor_dict = {
+inter_actor_relation_dict = {
 "0":"not related",
 "1":"related 1",
 "2":"related 2",
 "3":"related 1 and 2"
+}
+inter_actor_position_dict = {
+"0":"not related",
+"1":"front",
+"2":"left",
+"3":"right",
+"4":"back"
 }
 
 light_state_dict = {
