@@ -52,7 +52,7 @@ def lat_act_detector(rect:rect_object,t_s:float,threshold:float,integration_thre
     bbox_yaw_rate[valid[-1]+1:] = np.nan
     # compute yaw rate [valid_length]
     bbox_yaw_valid = bbox_yaw[valid[0]:valid[-1]+1].copy()
-    bbox_yaw_valid_rate = __compute_yaw_rate(bbox_yaw_valid) / t_s
+    bbox_yaw_valid_rate = __compute_yaw_rate(bbox_yaw_valid, t_s)
     bbox_yaw_rate[valid[0]:valid[-1]+1] = bbox_yaw_valid_rate.copy()
     bbox_yaw_rate,knots = univariate_spline(bbox_yaw_rate,valid,k,smoothing_factor)
     bbox_yaw_valid_rate = bbox_yaw_rate[valid[0]:valid[-1]+1].copy()
@@ -102,15 +102,20 @@ def end_lateral_activity(future_yaw_valid_rate,threshold,current_yaw_dir,integra
     else:
         return 0
 
-def __compute_yaw_rate(bbox_yaw_valid):
+def __compute_yaw_rate(bbox_yaw_valid, t_s):
     """
     yaw rate in [-pi,pi]
     """
-    bbox_yaw_rate_valid = bbox_yaw_valid - np.insert(bbox_yaw_valid[1:],0,0)
+    # project bbox heading angle to [0,2pi]
+
+    bbox_yaw_valid = np.where(bbox_yaw_valid<0,bbox_yaw_valid+200*np.pi,bbox_yaw_valid)
+    bbox_yaw_valid = np.where(bbox_yaw_valid>2*np.pi, np.mod(bbox_yaw_valid,2*np.pi),bbox_yaw_valid)
+
+    bbox_yaw_rate_valid = bbox_yaw_valid - np.insert(bbox_yaw_valid[:-1],0,0)
     bbox_yaw_rate_valid = np.where(np.abs(bbox_yaw_rate_valid)>np.pi,\
                             bbox_yaw_rate_valid-np.sign(bbox_yaw_rate_valid)*2*np.pi,\
                             bbox_yaw_rate_valid)
-    return bbox_yaw_rate_valid
+    return bbox_yaw_rate_valid / t_s
 
 
 
