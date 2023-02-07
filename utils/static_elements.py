@@ -56,14 +56,13 @@ class StaticElementsWaymo:
         'brokenSingleWhite':6,'brokenSingleYellow':9,'brokenDoubleYellow':10}
         self.lane_width ={'freeway':3.5,'surface_street':3.5,'bike_lane':1.5,'brokenSingleWhite':0.2,'brokenSingleYellow':0.2,'brokenDoubleYellow':0.2}
         self.lane = {'freeway':[],'surface_street':[],'bike_lane':[],'brokenSingleWhite':[],'brokenSingleYellow':[],'brokenDoubleYellow':[]}
-
-        
+        self.lane_id = {'freeway':[],'surface_street':[],'bike_lane':[],'brokenSingleWhite':[],'brokenSingleYellow':[],'brokenDoubleYellow':[]}
 
         # cross walk have no educated width, since their points are not sampled at 0.5m and they are just arcs of polygons
         self.other_object_type = {'cross_walk':18,'speed_bump':19}
         self.other_object = {'cross_walk':[],'speed_bump':[]}
         self.controlled_lane = {'controlled_lane_polygon':[]}
-        self.controlled_lanes_id = []
+        self.controlled_lane_id = []
         self.traffic_lights = {}
 
     def __call__(self):
@@ -144,7 +143,7 @@ class StaticElementsWaymo:
         traffic_lights_id = self.original_data_light['traffic_lights_id']
         traffic_lights_valid_status = self.original_data_light['traffic_lights_valid']
         controlled_lanes_id = np.unique(traffic_lights_id[traffic_lights_valid_status==1])
-        self.controlled_lanes_id = controlled_lanes_id.tolist()
+        # self.controlled_lanes_id = controlled_lanes_id.tolist()
         # create the lane polygon set
         self.__create_lane_polygon_set(roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz,roadgraph_lane_id,controlled_lanes_id)
         # create the other object polygon set
@@ -168,9 +167,11 @@ class StaticElementsWaymo:
                             lane_polylines = LineString(lane_coordinates)
                             lane_polygon = Polygon(lane_polylines.buffer(self.lane_width[key]/2))
                             self.lane[key].append(lane_polygon)
+                            self.lane_id[key].append(lane_id[i,0])
                             # append controlled lane polygon
                             if lane_id[i,0] in controlled_lanes_id:
                                 self.controlled_lane['controlled_lane_polygon'].append(lane_polygon)
+                                self.controlled_lane_id.append(lane_id[i,0])
                         else:
                             lane_point = Point(lane_coordinates[0]).buffer(self.lane_width[key]/2)
                             self.lane[key].append(lane_point)
