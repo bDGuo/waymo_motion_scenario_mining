@@ -175,6 +175,7 @@ class StaticElementsWaymo:
                         else:
                             lane_point = Point(lane_coordinates[0]).buffer(self.lane_width[key]/2)
                             self.lane[key].append(lane_point)
+                            self.lane_id[key].append(lane_id[i,0])
                         lane_start = i+1
                         if lane_start == len(lane_pts[0,:]):
                             break
