@@ -112,6 +112,7 @@ def __compute_yaw_rate(bbox_yaw_valid, t_s):
     bbox_yaw_valid = np.where(bbox_yaw_valid>2*np.pi, np.mod(bbox_yaw_valid,2*np.pi),bbox_yaw_valid)
 
     bbox_yaw_rate_valid = bbox_yaw_valid - np.insert(bbox_yaw_valid[:-1],0,0)
+    bbox_yaw_rate_valid[0] = 0
     bbox_yaw_rate_valid = np.where(np.abs(bbox_yaw_rate_valid)>np.pi,\
                             bbox_yaw_rate_valid-np.sign(bbox_yaw_rate_valid)*2*np.pi,\
                             bbox_yaw_rate_valid)
