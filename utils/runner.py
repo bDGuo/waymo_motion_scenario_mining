@@ -15,8 +15,10 @@ from logger.logger import *
 import traceback
 from helpers.wechatter import wechatter
 
-# working directory
-ROOT = Path.cwd().parent
+# working directory 
+# reslove() is to get the absolute path
+ROOT = Path(__file__).resolve().parent.parent
+
 
 # modify the following two lines to your own data and result directory
 DATADIR = ROOT / "waymo_open_dataset/data/tf_example/training"
