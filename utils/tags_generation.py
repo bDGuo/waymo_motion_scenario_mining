@@ -112,19 +112,29 @@ def generate_tags(DATADIR,FILE:str):
                 agent_lane_intersection_expanded_ratio = np.zeros_like(lo_act).tolist()
                 agent_lane_intersection_trajectory = np.zeros_like(lo_act).tolist()
                 agent_lane_intersection_trajectory_ratio = np.zeros_like(lo_act).tolist()
+                agent_current_lane_id = np.zeros_like(lo_act).tolist()
                 lane_polygon_list = static_element.get_lane(lane_type)
+                lane_id_list = static_element.lane_id[lane_type]
                 for step in range(valid_start,valid_end+1):
                     actor_expanded_multipolygon_step = actor_expanded_multipolygon[step]
                     actor_trajectory_polygon_step = actor_trajectory_polygon[step]
                     intersection,intersection_expanded = 0,0
-                    
-                    for lane_polygon in lane_polygon_list:
+                    # np.nan,int64 is not JSON serializable!
+                    pos_lane_id = -99.0 # dummy lane id
+                    pos_lane_intersection = 0
+                    for (lane_polygon,lane_id) in zip(lane_polygon_list,lane_id_list):
                         intersection_expanded += actor_expanded_multipolygon_step.intersection(lane_polygon).area
-                        intersection += actor_trajectory_polygon_step.intersection(lane_polygon).area
+                        current_actual_intersection = actor_trajectory_polygon_step.intersection(lane_polygon).area
+                        if current_actual_intersection > pos_lane_intersection:
+                            pos_lane_id = lane_id
+                            pos_lane_intersection = current_actual_intersection
+                        intersection += current_actual_intersection
+                        
                     agent_lane_intersection_expanded[step]=intersection_expanded
                     agent_lane_intersection_trajectory[step]=intersection
                     agent_lane_intersection_expanded_ratio[step] = intersection_expanded/actor_expanded_multipolygon_step.area
                     agent_lane_intersection_trajectory_ratio[step] = intersection/actor_trajectory_polygon_step.area
+                    agent_current_lane_id[step] = float(pos_lane_id)
                 agent_lane_relation = __compute_relation_actor_road_feature(valid_start,valid_end,agent_lane_intersection_trajectory_ratio,agent_lane_intersection_expanded_ratio)
                 # for efficiency, we can only store the intersection area when any of the two ratios is greater than zero
                 agent_static_element_intersection[lane_type]={
@@ -132,7 +142,8 @@ def generate_tags(DATADIR,FILE:str):
                     'expanded':agent_lane_intersection_expanded,
                     'expanded_ratio':agent_lane_intersection_expanded_ratio,
                     'trajectory':agent_lane_intersection_trajectory,
-                    'trajectory_ratio':agent_lane_intersection_trajectory_ratio
+                    'trajectory_ratio':agent_lane_intersection_trajectory_ratio,
+                    'current_lane_id':agent_current_lane_id
                 }
             # compute intersection with other types of objects
             for other_object_type in other_object_key:
@@ -167,7 +178,7 @@ def generate_tags(DATADIR,FILE:str):
                 }
             # compute intersection with controlled lanes
             controlled_lanes = static_element.get_controlled_lane()
-            controlled_lanes_id = static_element.controlled_lanes_id
+            controlled_lanes_id = static_element.controlled_lane_id
             traffic_lights_state = static_element.traffic_lights['traffic_lights_state']
             traffic_lights_id = static_element.traffic_lights['traffic_lights_lane_id']
             traffic_lights_points= static_element.traffic_lights['points']
@@ -275,7 +286,7 @@ def __compute_relation_actor_road_feature(valid_start,valid_end,trajectory_ratio
     trajectory_ratio = np.array(trajectory_ratio)
     expanded_ratio = np.array(expanded_ratio)
     interesting_threshold = 1e-2
-    # ratio = 0 means not relative
+    # ratio <= interesting threshold is not relative
     if np.sum(trajectory_ratio) == 0 and np.sum(expanded_ratio) == 0:
         # making sure the invalid is -5
         actor_lane_relation[:int(valid_start)] = -5
@@ -301,8 +312,7 @@ def __compute_relation_actor_road_feature(valid_start,valid_end,trajectory_ratio
         actor_lane_relation[leaving] = 0
         actor_lane_relation[0] = actor_lane_relation[1]
         actor_lane_relation[valid_start]=actor_lane_relation[valid_start+1]
-        # print(difference_trajectory_ratio,difference_trajectory_ratio.shape)
-        # print(staying)
+
         if np.sum(expanded_ratio) != 0:
             approaching = np.where(expanded_ratio>0)[0]
             not_relative = np.where(trajectory_ratio<=interesting_threshold)[0]
@@ -378,6 +388,8 @@ def __compute_actor_position_relation(agent_pp_state_1,agent_pp_state_2,step):
     heading_vector = np.array([np.cos(theta),np.sin(theta)])
     cos_ = np.dot(position_relation_vector,heading_vector)/(np.linalg.norm(position_relation_vector))
     sin_ = np.cross(position_relation_vector,heading_vector)/(np.linalg.norm(position_relation_vector))
+
+    # np.arctan2 (-pi,pi)
     if -0.25 * np.pi < np.arctan2(sin_,cos_) <= 0.25 * np.pi:
         position_relation = 1 # front
     elif 0.25 * np.pi < np.arctan2(sin_,cos_) <= 0.75 * np.pi:
