@@ -302,11 +302,12 @@ def __compute_relation_actor_road_feature(valid_start,valid_end,trajectory_ratio
     else:
         # set the actual ratio greater than 1 to 1
         trajectory_ratio = np.where(trajectory_ratio>1,1,trajectory_ratio)
-        difference_trajectory_ratio = np.diff(trajectory_ratio)
+        trajectory_ratio_dot = np.diff(trajectory_ratio)
+        trajectory_ratio_dot_dot = np.diff(trajectory_ratio_dot)
         relative_time = np.where(trajectory_ratio>interesting_threshold)[0]
-        staying = np.intersect1d(np.where(np.abs(difference_trajectory_ratio)<=interesting_threshold)[0]+1,relative_time)
-        entering = np.intersect1d(np.where(difference_trajectory_ratio>interesting_threshold)[0]+1,relative_time)
-        leaving = np.intersect1d(np.where(difference_trajectory_ratio<-interesting_threshold)[0]+1,relative_time)
+        staying = np.intersect1d(np.where(np.abs(trajectory_ratio_dot)<=interesting_threshold)[0]+1,relative_time)
+        entering = np.intersect1d(np.where(trajectory_ratio_dot>interesting_threshold)[0]+1,relative_time)
+        leaving = np.intersect1d(np.where(trajectory_ratio_dot<-interesting_threshold)[0]+1,relative_time)
         actor_lane_relation[staying] = 3
         actor_lane_relation[entering] = 2
         actor_lane_relation[leaving] = 0
@@ -367,7 +368,7 @@ def __generate_inter_actor_relation(agent_pp_state_list:list):
                     elif not etp_flag and intersection_ebb:
                         relation[step] = 2
                     position[step] = __compute_actor_position_relation(agent_pp_state_1,agent_pp_state_2,step)
-                    #TODO: compute the position relation
+                    #compute the position relation
             if np.sum(relation):
                 inter_actor_relation[agent_key_1][agent_key_2] = {}
                 inter_actor_relation[agent_key_1][agent_key_2]['relation'] = relation.tolist()
