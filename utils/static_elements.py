@@ -207,7 +207,7 @@ class StaticElementsWaymo:
             object_type_dir = roadgraph_dir_xyz[object_type_mask,:2].T
             found_pts = []
             if len(object_type_mask):
-                # TODO: recursively find the polygon points
+                # recursively find the polygon points
                 # for i,(pt_x,pt_y,dir_x,dir_y) in enumerate(zip(object_type_pts[0,:],object_type_pts[1,:],object_type_dir[0,:],object_type_dir[1,:])):
                 #     if i in found_pts:
                 #         continue
