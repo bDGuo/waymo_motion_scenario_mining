@@ -22,6 +22,8 @@ la_act_dict = {
 }
 
 road_relation_dict = {
+"11": 'lane changing',
+"10": 'no lane change',
 "3":'staying',
 "2":'entering',
 "1":'approaching',
@@ -29,6 +31,7 @@ road_relation_dict = {
 "-1":'not relative',
 "-5":'invalid'
 }
+
 
 inter_actor_relation_dict = {
 "0":"not related",
