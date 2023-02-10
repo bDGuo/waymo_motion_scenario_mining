@@ -34,10 +34,12 @@ TTC_1 = 5
 # parameter for estimation of two actors' interaction
 TTC_2 = 9
 bbox_extension = 2 # extend length and width of the bbox by 2 times
+lane_key = ['freeway','surface_street','bike_lane']
+dashed_road_line_key = ['brokenSingleWhite','brokenSingleYellow','brokenDoubleYellow']
 
 def generate_tags(DATADIR,FILE:str):
     static_element = generate_lanes(DATADIR,FILE)
-    lane_key = ['freeway','surface_street','bike_lane','brokenSingleWhite','brokenSingleYellow','brokenDoubleYellow']
+
     other_object_key = ['cross_walk','speed_bump']
     controlled_lane = static_element.get_controlled_lane()
     actors_activity={} # [actor_type][actor_id][validity/lo_act/la_act]
@@ -107,14 +109,15 @@ def generate_tags(DATADIR,FILE:str):
             # actor_expanded_multipolygon = actor_expanded_polygon
             actor_trajectory_polygon = agent_state.polygon_set()
             # compute intersection with all lane types
-            for lane_type in lane_key:
+            agent_lane_id = {key:[] for key in lane_key}
+            for key in (lane_key+dashed_road_line_key):
                 agent_lane_intersection_expanded = np.zeros_like(lo_act).tolist()
                 agent_lane_intersection_expanded_ratio = np.zeros_like(lo_act).tolist()
                 agent_lane_intersection_trajectory = np.zeros_like(lo_act).tolist()
                 agent_lane_intersection_trajectory_ratio = np.zeros_like(lo_act).tolist()
                 agent_current_lane_id = np.zeros_like(lo_act).tolist()
-                lane_polygon_list = static_element.get_lane(lane_type)
-                lane_id_list = static_element.lane_id[lane_type]
+                lane_polygon_list = static_element.get_lane(key)
+                lane_id_list = static_element.lane_id[key]
                 for step in range(valid_start,valid_end+1):
                     actor_expanded_multipolygon_step = actor_expanded_multipolygon[step]
                     actor_trajectory_polygon_step = actor_trajectory_polygon[step]
@@ -135,9 +138,14 @@ def generate_tags(DATADIR,FILE:str):
                     agent_lane_intersection_expanded_ratio[step] = intersection_expanded/actor_expanded_multipolygon_step.area
                     agent_lane_intersection_trajectory_ratio[step] = intersection/actor_trajectory_polygon_step.area
                     agent_current_lane_id[step] = float(pos_lane_id)
-                agent_lane_relation = __compute_relation_actor_road_feature(valid_start,valid_end,agent_lane_intersection_trajectory_ratio,agent_lane_intersection_expanded_ratio,type=lane_type,lane_id=agent_current_lane_id)
+                
+                if key in dashed_road_line_key:
+                    for lane_key_type in lane_key:
+                        agent_lane_id[lane_key_type] =  agent_static_element_intersection[lane_key_type]['current_lane_id']
+
+                agent_lane_relation = __compute_relation_actor_road_feature(valid_start,valid_end,agent_lane_intersection_trajectory_ratio,agent_lane_intersection_expanded_ratio,type=key,lane_id=agent_lane_id)
                 # for efficiency, we can only store the intersection area when any of the two ratios is greater than zero
-                agent_static_element_intersection[lane_type]={
+                agent_static_element_intersection[key]={
                     'relation':agent_lane_relation,
                     'expanded':agent_lane_intersection_expanded,
                     'expanded_ratio':agent_lane_intersection_expanded_ratio,
@@ -282,7 +290,7 @@ def __compute_relation_actor_road_feature(valid_start,valid_end,trajectory_ratio
     2 --- entering
     3 --- staying
     """
-    if type in ['brokenSingleWhite','brokenSingleYellow','brokenDoubleYellow']:
+    if type in dashed_road_line_key:
         return __compute_actor_road_lane_change(valid_start,valid_end,trajectory_ratio,lane_id)
     actor_lane_relation = np.ones_like(expanded_ratio)*(-1)
     trajectory_ratio = np.array(trajectory_ratio)
@@ -340,11 +348,12 @@ def __compute_actor_road_lane_change(valid_start,valid_end,trajectory_ratio,lane
     lane_change_segments = np.split(trajectory_ratio,np.where(trajectory_ratio==0)[0])
     none_zero_segments = np.split(np.where(trajectory_ratio!=0)[0],np.where(np.diff(np.where(trajectory_ratio!=0)[0])>1)[0]+1)
 
-    for segment in none_zero_segments:
-        if len(segment)>1:
-            lane_id_segment = lane_id[segment[0]:segment[-1]+1]
-            if len(np.where(np.diff(lane_id_segment)>0)[0]):
-                actor_road_lane_change[segment[0]:segment[-1]+1] = 11
+    for key in lane_key:
+        for segment in none_zero_segments:
+            if len(segment)>1:
+                lane_id_segment = lane_id[key][segment[0]:segment[-1]+1]
+                if len(np.where(np.diff(lane_id_segment)>0)[0]):
+                    actor_road_lane_change[segment[0]:segment[-1]+1] = 11
     actor_road_lane_change[:int(valid_start)] = -5
     actor_road_lane_change[int(valid_end)+1:] = -5
 
