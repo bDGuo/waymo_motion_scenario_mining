@@ -28,7 +28,9 @@ t_s = 0.1
 kernel = 6
 sampling_threshold = 8.72e-2  # 
 time_steps = 91
-integration_threshold = sampling_threshold*9 # 8.72e-2*9 = 0.785 rad. = 44.97 deg.
+intgr_threshold_turn = sampling_threshold*9 # 8.72e-2*9 = 0.785 rad. = 44.97 deg.
+intgr_threshold_swerv = sampling_threshold*4 # 8.72e-2*4 = 0.349 rad. = 19.95 deg.
+
 # parameter for estimation of the actor approaching a static element
 TTC_1 = 5
 # parameter for estimation of two actors' interaction
@@ -38,7 +40,7 @@ lane_key = ['freeway','surface_street','bike_lane']
 dashed_road_line_key = ['brokenSingleWhite','brokenSingleYellow','brokenDoubleYellow']
 
 def generate_tags(DATADIR,FILE:str):
-    static_element = generate_lanes(DATADIR,FILE)
+    static_element = generate_lane_polygons(DATADIR,FILE)
 
     other_object_key = ['cross_walk','speed_bump']
     controlled_lane = static_element.get_controlled_lane()
@@ -97,7 +99,7 @@ def generate_tags(DATADIR,FILE:str):
             agent_activity['lo_act'] = lo_act.tolist()
             agent_activity['long_v'] = long_v.tolist()
             ##########  lane activity detection ##########
-            la_act,bbox_yaw_rate = lat_act_detector(agent_state,t_s,sampling_threshold,integration_threshold,k=3,smoothing_factor=smoothing_factor)
+            la_act,bbox_yaw_rate = lat_act_detector(agent_state,t_s,sampling_threshold,intgr_threshold_turn,intgr_threshold_swerv,k=3,smoothing_factor=smoothing_factor)
             agent_activity['la_act'] = la_act.squeeze().tolist()
             agent_activity['yaw_rate'] = bbox_yaw_rate.squeeze().tolist()
             ###############################################
@@ -244,7 +246,7 @@ def generate_tags(DATADIR,FILE:str):
     inter_actor_relation = __generate_inter_actor_relation(agent_pp_state_list)
     return actors_list,inter_actor_relation,actors_activity,actors_static_element_intersection
 
-def generate_lanes(DATADIR:str,FILE:str):
+def generate_lane_polygons(DATADIR:str,FILE:str):
     original_data_roadgragh,original_data_light = road_graph_parser(DATADIR,FILE)
     static_element = StaticElementsWaymo(original_data_roadgragh,original_data_light)
     static_element.create_polygon_set()
