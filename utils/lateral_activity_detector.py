@@ -6,7 +6,7 @@ import tensorflow as tf
 from rect_object import rect_object
 import numpy as np
 
-def lat_act_detector(rect:rect_object,t_s:float,threshold:float,integration_threshold:float,k,smoothing_factor=None)->tuple:
+def lat_act_detector(rect:rect_object,t_s:float,threshold:float,intgr_threshold_turn:float,intgr_threshold_swerv:float,k,smoothing_factor=None)->tuple:
     """
     Determine the lateral activity of the input actor.
     Method:
@@ -29,7 +29,9 @@ def lat_act_detector(rect:rect_object,t_s:float,threshold:float,integration_thre
     la_event: lateral event of sample time          np.array [time_steps=91,]
                 0       going straight
                 1       turning left
+                2       swerving left
                 -1      turning right
+                -2     swerving right
                 -5      invalid data
     bbox_yaw_rate: cubic splined yaw rate           np.array [time_steps=91,]
     """
@@ -65,12 +67,13 @@ def lat_act_detector(rect:rect_object,t_s:float,threshold:float,integration_thre
     iter_yaw_valid_rate = enumerate(bbox_yaw_valid_rate)
     for i,yaw_rate in iter_yaw_valid_rate:
         # too small yaw_rate is taken as going straight
-        if np.abs(yaw_rate) <= threshold:
-            continue
+        # if np.abs(yaw_rate) <= threshold:
+        #     continue
         # counter clock-wise is turning left and the yaw_rate is positive
         yaw_rate_dir = np.sign(yaw_rate) # 1 for left, -1 for right
-        k_end = end_lateral_activity(bbox_yaw_valid_rate[i:],threshold,yaw_rate_dir,integration_threshold,t_s)
-        la_act_valid[i:i+k_end] = yaw_rate_dir
+
+        k_end,value = end_lateral_activity(bbox_yaw_valid_rate[i:],threshold,yaw_rate_dir,intgr_threshold_turn,intgr_threshold_swerv,t_s,i)
+        la_act_valid[i:i+k_end] = yaw_rate_dir*value
         if k_end:
             [next(iter_yaw_valid_rate, None) for _ in range(k_end)]
 
@@ -83,24 +86,47 @@ def lat_act_detector(rect:rect_object,t_s:float,threshold:float,integration_thre
 
     return la_act, bbox_yaw_rate
 
-def end_lateral_activity(future_yaw_valid_rate,threshold,current_yaw_dir,integration_threshold,t_s):
+def end_lateral_activity(future_yaw_valid_rate,threshold,current_yaw_dir,intgr_threshold_turn,intgr_threshold_swerv,t_s,i)->tuple:
     # compute distance from current to the one that is not in the same direction
+    # output:
+    #   k_end: the index of the end of the lateral activity
+    #   value: 1 for turn, 2 for swerve
     integration_yaw_rate = 0
-    for i,yaw_rate in enumerate(future_yaw_valid_rate):
-        if np.abs(yaw_rate) <= threshold:
-            integration_yaw_rate = np.sum(future_yaw_valid_rate[:i]) * t_s * current_yaw_dir
-            if integration_yaw_rate >= integration_threshold:
-               return i
-        if yaw_rate*current_yaw_dir < 0:
-            integration_yaw_rate = np.sum(future_yaw_valid_rate[:i]) * t_s * current_yaw_dir
+    index_small_yaw_rate = np.where(np.abs(future_yaw_valid_rate) <= threshold)[0]
+    index_opposite_yaw_rate = np.where(future_yaw_valid_rate*current_yaw_dir < 0)[0]
 
-            if integration_yaw_rate >= integration_threshold:
-                return i
+    index_nearest_small_yaw_rate = index_small_yaw_rate[0]     if len(index_small_yaw_rate) else 0
+    index_nearest_opposite_yaw_rate = index_opposite_yaw_rate[0] if len(index_opposite_yaw_rate) else 0
 
-    if np.sum(future_yaw_valid_rate)*t_s* current_yaw_dir >= integration_threshold:
-        return len(future_yaw_valid_rate)
+    integration_nearest_small_yaw_rate = np.sum(future_yaw_valid_rate[:index_nearest_small_yaw_rate]) * t_s * current_yaw_dir
+    integration_nearest_opposite_yaw_rate = np.sum(future_yaw_valid_rate[:index_nearest_opposite_yaw_rate]) * t_s * current_yaw_dir
+
+
+    if integration_nearest_small_yaw_rate >= intgr_threshold_turn:
+        return index_nearest_small_yaw_rate,1
+    if integration_nearest_opposite_yaw_rate >= intgr_threshold_turn:
+        return index_nearest_opposite_yaw_rate,1
+    if integration_nearest_opposite_yaw_rate >= intgr_threshold_swerv:
+        print(i,index_nearest_opposite_yaw_rate)
+        return index_nearest_opposite_yaw_rate,2
+
+    # for i,yaw_rate in enumerate(future_yaw_valid_rate):
+    #     if np.abs(yaw_rate) <= threshold:
+    #         integration_yaw_rate = np.sum(future_yaw_valid_rate[:i]) * t_s * current_yaw_dir
+    #         if integration_yaw_rate >= intgr_threshold_turn:
+    #            return i
+    #     if yaw_rate*current_yaw_dir < 0:
+    #         integration_yaw_rate = np.sum(future_yaw_valid_rate[:i]) * t_s * current_yaw_dir
+
+    #         if integration_yaw_rate >= intgr_threshold_turn:
+    #             return i
+
+    if np.sum(future_yaw_valid_rate)*t_s* current_yaw_dir >= intgr_threshold_turn:
+        return len(future_yaw_valid_rate),1
+    elif np.sum(future_yaw_valid_rate)*t_s* current_yaw_dir >= intgr_threshold_swerv:
+        return len(future_yaw_valid_rate),2
     else:
-        return 0
+        return 0,1
 
 def __compute_yaw_rate(bbox_yaw_valid, t_s):
     """
