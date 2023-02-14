@@ -19,3 +19,7 @@ def pmf(data:List)->Dict:
     for x in freq:
         freq[x] /= n
     return freq
+
+# Example
+data = [1, 2, 2, 3, 5]
+print(pmf(data))
