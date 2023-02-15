@@ -22,11 +22,12 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # modify the following two lines to your own data and result directory
 DATADIR = ROOT / "waymo_open_dataset/data/tf_example/training"
-RESULTDIR = ROOT / "results/gp1"
 
 DATADIR_WALK = DATADIR.iterdir()
 RESULT_TIME = time.strftime("%Y-%m-%d-%H_%M",time.localtime())
-
+RESULTDIR = ROOT / "results/gp1" / RESULT_TIME
+if not RESULTDIR.exists():
+    RESULTDIR.mkdir()
 # parameters default setting
 # parameter for estimation of the actor approaching a static element
 TTC_1 = 5
@@ -46,7 +47,7 @@ if __name__ == '__main__':
             print(f"Processing file: {FILE}")
         else:
             print(f"File name error: {FILE}")
-            continue    
+            continue
         result_dict = {}
         RESULT_FILENAME = f'Waymo_{FILENUM}_{RESULT_TIME}_tag.json'
         try:
@@ -60,13 +61,11 @@ if __name__ == '__main__':
             'actors_activity':actors_activity,
             'actors_static_element_intersection':actors_static_element_intersection
             }
-            with open(os.path.join(RESULTDIR,RESULT_FILENAME),'w') as f:
+            with open(RESULTDIR / RESULT_FILENAME,'w') as f:
                 json.dump(result_dict,f)
-            # with open(os.path.join(RESULTDIR,RESULT_FILENAME.replace('.json','.pkl')),'wb') as f:
-            #     pickle.dump(result_dict,f)
             solo_scenarios = mine_solo_scenarios(result_dict)
             RESULT_FILENAME = f'Waymo_{FILENUM}_{RESULT_TIME}_solo.json'
-            with open(os.path.join(RESULTDIR,RESULT_FILENAME),'w') as f:
+            with open(RESULTDIR / RESULT_FILENAME,'w') as f:
                 json.dump(solo_scenarios,f)
         except Exception as e:
             trace = traceback.format_exc()
