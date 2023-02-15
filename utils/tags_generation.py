@@ -58,9 +58,9 @@ def generate_tags(DATADIR,FILE:str):
         actor_static_element_intersection = {}
         if len(agent_list.shape) == 0:
             agent_list = [agent_list.item()]
-            print(f"Processing {actor_type} with {len(agent_list)} agents...")
+            print(f"Tagging {len(agent_list)} {actor_type}...")
         else:
-            print(f"Processing {actor_type} with {agent_list.shape[0]} agents...")
+            print(f"Tagging {agent_list.shape[0]} {actor_type}(s)...")
         agent_list_2 = agent_list.copy()
         for agent in agent_list:
             agent_activity = {}
