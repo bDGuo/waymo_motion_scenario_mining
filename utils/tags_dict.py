@@ -15,9 +15,11 @@ lo_act_dict = {
 }
 
 la_act_dict = {
+"2":'swerving left',
 "1":'turning left',
 "0":'going straight',
 "-1":'turning right',
+'-2':'swerving right',
 "-5":'invalid'
 }
 
