@@ -61,6 +61,7 @@ class StaticElementsWaymo:
         # cross walk have no educated width, since their points are not sampled at 0.5m and they are just arcs of polygons
         self.other_object_type = {'cross_walk':18,'speed_bump':19}
         self.other_object = {'cross_walk':[],'speed_bump':[]}
+        self.other_object_id = {'cross_walk':[],'speed_bump':[]}
         self.controlled_lane = {'controlled_lane_polygon':[]}
         self.controlled_lane_id = []
         self.traffic_lights = {}
@@ -145,13 +146,47 @@ class StaticElementsWaymo:
         controlled_lanes_id = np.unique(traffic_lights_id[traffic_lights_valid_status==1])
         # self.controlled_lanes_id = controlled_lanes_id.tolist()
         # create the lane polygon set
-        self.__create_lane_polygon_set(roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz,roadgraph_lane_id,controlled_lanes_id)
+        self.__create_lane_polygon_set(roadgraph_type,roadgraph_xyz,roadgraph_lane_id,controlled_lanes_id)
         # create the other object polygon set
-        self.__create_other_object_polygon_set(roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz)
+        self.__create_other_object_polygon_set(roadgraph_type,roadgraph_xyz,roadgraph_lane_id)
         # create the traffic light dict
         self.__reducing_traffic_lights_dim()
+    
+    def __create_lane_polygon_set(self,roadgraph_type,roadgraph_xyz,roadgraph_lane_id,controlled_lanes_id):
+        # TODO:create the lane polygon list for each lane type
+        for key in self.lane_type:
+            lane_mask = np.where(roadgraph_type[:,0]==self.lane_type[key])[0]
+            lane_pts = roadgraph_xyz[lane_mask,:2]      # dim = [num_points,2]
+            lane_id_list =  roadgraph_lane_id[lane_mask] # dim = [num_points,1]
+            lane_unique_id = np.unique(lane_id_list)    # dim = [num_lanes,1]
+            for lane_id in lane_unique_id:
+                lane_coordinates = lane_pts[np.where(lane_id_list==lane_id)[0],:]
+                lane_polylines = LineString(lane_coordinates) if len(lane_coordinates) > 1 else Point(lane_coordinates[0])
+                lane_polygon = Polygon(lane_polylines.buffer(self.lane_width[key]/2))
+                self.lane[key].append(lane_polygon)
+                self.lane_id[key].append(lane_id)
+                # append controlled lane polygon
+                if lane_id in controlled_lanes_id:
+                    self.controlled_lane['controlled_lane_polygon'].append(lane_polygon)
+                    self.controlled_lane_id.append(lane_id)
+        return 0
 
-    def __create_lane_polygon_set(self,roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz,roadgraph_lane_id,controlled_lanes_id):
+    def __create_other_object_polygon_set(self,roadgraph_type,roadgraph_xyz,roadgraph_lane_id):
+        # TODO:create the other object polygon list for each other object type
+        for key in self.other_object_type:
+            other_object_mask = np.where(roadgraph_type[:,0]==self.other_object_type[key])[0]
+            other_object_pts = roadgraph_xyz[other_object_mask,:2]      # dim = [num_points,2]
+            other_object_id_list = roadgraph_lane_id[other_object_mask] # dim = [num_points,1]
+            other_object_unique_id = np.unique(other_object_id_list) # dim = [num_other_objects,2]
+            for other_object_id in other_object_unique_id:
+                other_object_coordinates = other_object_pts[np.where(other_object_id_list==other_object_id)[0],:]
+                other_object_polygon = Polygon(other_object_coordinates)
+                self.other_object[key].append(other_object_polygon)
+                self.other_object_id[key].append(other_object_id)
+        return 0
+            
+    def __create_lane_polygon_set_0(self,roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz,roadgraph_lane_id,controlled_lanes_id):
+        # deprecated for low efficiency
         for key in self.lane_type:
             lane_mask = np.where(roadgraph_type[:,0]==self.lane_type[key])[0]
             lane_pts = roadgraph_xyz[lane_mask,:2].T
@@ -195,8 +230,8 @@ class StaticElementsWaymo:
                                 lane_coordinates.append((pt_x_2,pt_y_2))
                                 break
 
-    def __create_other_object_polygon_set(self,roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz):
-
+    def __create_other_object_polygon_set_0(self,roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz):
+        # deprecated for low efficiency
         # line range for finding colinear points
         line_range = 20
         tolerance = 1e-5
@@ -263,7 +298,6 @@ class StaticElementsWaymo:
                 result.append(point_2)
                 found_pts.append(index)
                 return result
-
         pass
 
     def __determine_colinear_points(self,line_1,point_2,tolerance:float)->bool:

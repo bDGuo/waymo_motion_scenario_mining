@@ -11,7 +11,7 @@ import json
 import os
 import numpy as np
 from helpers.os_helpers import *
-from tags_generation import generate_lanes,road_graph_parser
+from tags_generation import generate_lane_polygons,road_graph_parser
 from helpers.diverse_plot import plot_road_lines,create_figure_and_axes
 from static_elements import StaticElementsWaymo
 from create_rect_from_file import rect_object_creator

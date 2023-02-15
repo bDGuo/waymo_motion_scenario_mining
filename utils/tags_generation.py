@@ -145,7 +145,7 @@ def generate_tags(DATADIR,FILE:str):
                     for lane_key_type in lane_key:
                         agent_lane_id[lane_key_type] =  agent_static_element_intersection[lane_key_type]['current_lane_id']
 
-                agent_lane_relation = __compute_relation_actor_road_feature(valid_start,valid_end,agent_lane_intersection_trajectory_ratio,agent_lane_intersection_expanded_ratio,type=key,lane_id=agent_lane_id)
+                agent_lane_relation = __compute_relation_actor_road_feature(valid_start,valid_end,agent_lane_intersection_trajectory_ratio,agent_lane_intersection_expanded_ratio,type=key,lane_id=agent_lane_id,la_act = agent_activity['la_act'])
                 # for efficiency, we can only store the intersection area when any of the two ratios is greater than zero
                 agent_static_element_intersection[key]={
                     'relation':agent_lane_relation,
@@ -282,7 +282,7 @@ def road_graph_parser(DATADIR:str,FILE:str)->tuple:
     return original_data_roadgragh,original_data_light
 
 
-def __compute_relation_actor_road_feature(valid_start,valid_end,trajectory_ratio,expanded_ratio,type=None,lane_id=None):
+def __compute_relation_actor_road_feature(valid_start,valid_end,trajectory_ratio,expanded_ratio,type=None,lane_id=None,la_act=None):
     """
     compute the relation between the actor and the road features
     -5 ---  invalid
@@ -293,7 +293,7 @@ def __compute_relation_actor_road_feature(valid_start,valid_end,trajectory_ratio
     3 --- staying
     """
     if type in dashed_road_line_key:
-        return __compute_actor_road_lane_change(valid_start,valid_end,trajectory_ratio,lane_id)
+        return __compute_actor_road_lane_change(valid_start,valid_end,trajectory_ratio,lane_id,la_act)
     actor_lane_relation = np.ones_like(expanded_ratio)*(-1)
     trajectory_ratio = np.array(trajectory_ratio)
     expanded_ratio = np.array(expanded_ratio)
@@ -338,7 +338,7 @@ def __compute_relation_actor_road_feature(valid_start,valid_end,trajectory_ratio
         actor_lane_relation[int(valid_end)+1:] = -5
         return actor_lane_relation.tolist()
 
-def __compute_actor_road_lane_change(valid_start,valid_end,trajectory_ratio,lane_id): 
+def __compute_actor_road_lane_change(valid_start,valid_end,trajectory_ratio,lane_id,la_act): 
     """
     compute time instances when lane change happens
     -5 --- not relative
@@ -349,12 +349,14 @@ def __compute_actor_road_lane_change(valid_start,valid_end,trajectory_ratio,lane
     trajectory_ratio = np.array(trajectory_ratio)
     lane_change_segments = np.split(trajectory_ratio,np.where(trajectory_ratio==0)[0])
     none_zero_segments = np.split(np.where(trajectory_ratio!=0)[0],np.where(np.diff(np.where(trajectory_ratio!=0)[0])>1)[0]+1)
+    abs_la_act = np.abs(la_act)
 
     for key in lane_key:
         for segment in none_zero_segments:
             if len(segment)>1:
                 lane_id_segment = lane_id[key][segment[0]:segment[-1]+1]
-                if len(np.where(np.diff(lane_id_segment)>0)[0]):
+                abs_la_act_segment = abs_la_act[segment[0]:segment[-1]+1]
+                if len(np.where(np.diff(lane_id_segment)>0)[0]) and len(np.where(abs_la_act_segment==2)[0]):
                     actor_road_lane_change[segment[0]:segment[-1]+1] = 11
     actor_road_lane_change[:int(valid_start)] = -5
     actor_road_lane_change[int(valid_end)+1:] = -5
