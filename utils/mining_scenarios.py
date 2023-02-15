@@ -1,6 +1,7 @@
 from tags_dict import lo_act_dict,la_act_dict,road_relation_dict,inter_actor_relation_dict,inter_actor_position_dict,light_state_dict
 from collections import Iterable
 import os
+import numpy as np
 
 def mine_solo_scenarios(tags_dict:dict)->dict:
     actors_list = tags_dict['actors_list']
@@ -59,11 +60,14 @@ def __computing_turning_point(activity,valid_start:int,valid_end:int)->list:
     find turning points of activity.
     i.e. the start of another type of activity
     """
-    turning_points = [valid_start]
-    for i in range(valid_start+1,valid_end):
-        if activity[i] != activity[i-1]:
-            turning_points.append(i)
-    return turning_points
+    activity_diff = np.diff(np.array(activity[valid_start:valid_end+1]))
+    turning_points = np.where(activity_diff!=0)[0] + valid_start
+    return np.insert(turning_points,0,valid_start).tolist()
+    # turning_points = [valid_start]
+    # for i in range(valid_start+1,valid_end):
+    #     if activity[i] != activity[i-1]:
+    #         turning_points.append(i)
+    # return turning_points
 
 def __summarizing_events(activity,turning_points:list,valid_start:int,valid_end:int,event_type:str,activity_type:dict)->dict:
     """
