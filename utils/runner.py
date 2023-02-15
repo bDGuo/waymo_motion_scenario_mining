@@ -8,12 +8,13 @@ import time
 import re
 import json
 import argparse
-from tags_generation import generate_tags
+from TagsGenerator import TagsGenerator
 from mining_scenarios import mine_solo_scenarios
 from rich.progress import track
 from logger.logger import *
 import traceback
 from helpers.wechatter import wechatter
+from parameters import *
 
 # working directory 
 # reslove() is to get the absolute path
@@ -28,11 +29,7 @@ RESULT_TIME = time.strftime("%Y-%m-%d-%H_%M",time.localtime())
 RESULTDIR = ROOT / "results/gp1" / RESULT_TIME
 if not RESULTDIR.exists():
     RESULTDIR.mkdir()
-# parameters default setting
-# parameter for estimation of the actor approaching a static element
-TTC_1 = 5
-# parameter for estimation of two actors' interaction
-TTC_2 = 9
+
 # parser = argparse.ArgumentParser()
 # parser.add_argument('--file', type=str, required=True, help='#file to plot.e.g.:00003')
 # args = parser.parse_args()
@@ -51,10 +48,11 @@ if __name__ == '__main__':
         result_dict = {}
         RESULT_FILENAME = f'Waymo_{FILENUM}_{RESULT_TIME}_tag.json'
         try:
+            tags_generator = TagsGenerator()
             actors_list,\
             inter_actor_relation,\
             actors_activity,\
-            actors_static_element_intersection = generate_tags(DATADIR,FILE)
+            actors_static_element_intersection = tags_generator(DATADIR,FILE)
             result_dict = {
             'actors_list':actors_list,
             'inter_actor_relation':inter_actor_relation,
