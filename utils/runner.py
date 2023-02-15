@@ -9,7 +9,7 @@ import re
 import json
 import argparse
 from TagsGenerator import TagsGenerator
-from mining_scenarios import mine_solo_scenarios
+from ScenarioMiner import ScenarioMiner
 from rich.progress import track
 from logger.logger import *
 import traceback
@@ -52,16 +52,17 @@ if __name__ == '__main__':
             actors_list,\
             inter_actor_relation,\
             actors_activity,\
-            actors_static_element_intersection = tags_generator(DATADIR,FILE)
+            actors_environment_element_intersection = tags_generator.tagging(DATADIR,FILE)
             result_dict = {
             'actors_list':actors_list,
             'inter_actor_relation':inter_actor_relation,
             'actors_activity':actors_activity,
-            'actors_static_element_intersection':actors_static_element_intersection
+            'actors_environment_element_intersection':actors_environment_element_intersection
             }
             with open(RESULTDIR / RESULT_FILENAME,'w') as f:
                 json.dump(result_dict,f)
-            solo_scenarios = mine_solo_scenarios(result_dict)
+            scenario_miner = ScenarioMiner()
+            solo_scenarios = scenario_miner.mining(result_dict)
             RESULT_FILENAME = f'Waymo_{FILENUM}_{RESULT_TIME}_solo.json'
             with open(RESULTDIR / RESULT_FILENAME,'w') as f:
                 json.dump(solo_scenarios,f)

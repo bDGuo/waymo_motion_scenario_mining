@@ -5,54 +5,29 @@ Date: 04/11/2022
 """
 from collections import OrderedDict
 import matplotlib.pyplot as plt
-from matplotlib import cm
-import matplotlib.colors as mcolors
 import json
 import os
 import numpy as np
 from helpers.os_helpers import *
-from tags_generation import generate_lane_polygons,road_graph_parser
 from helpers.diverse_plot import plot_road_lines,create_figure_and_axes
-from static_elements import StaticElementsWaymo
-from create_rect_from_file import rect_object_creator
-from tags_dict import lo_act_dict,la_act_dict
-from shapely.ops import unary_union
+from EnvironmentElements import EnvironmentElementsWaymo
+from helpers.create_rect_from_file import actor_creator
+from parameters.tags_dict import lo_act_dict,la_act_dict
+from parameters.plot_parameters import *
 
-font1 = {'family' : 'Times New Roman','weight' : 'normal','size':20}
-font2 = {'family' : 'Times New Roman','weight' : 'normal','size':30}
-lane_color = {
-    'freeway':'k',
-    'surface_street':'slategray',
-    'bike_lane':'maroon',
-    'cross_walk':'lightgray',
-    'speed_bump':'darkgoldenrod'
-}
-actor_color = {
-    'host_a':{'color':'r','alpha':0.5},
-    'host_e':{'color':'b','alpha':0.3},
-    'guest_a':{'color':'yellow','alpha':0.3},
-    'guest_e':{'color':'green','alpha':0.1}
-}
-
-size_pixels = 1000
-lane_key = ['freeway','surface_street','bike_lane']
-other_object_key = ['cross_walk','speed_bump']
-bbox_extension = 2
-# parameter for estimation of the actor approaching a static element
-TTC_1 = 5
-# parameter for estimation of two actors' interaction
-TTC_2 = 9
 
 def plot_all_scenarios(DATADIR,FILE,FILENUM,RESULT_DIR,RESULT_FILENAME,RESULT_SOLO,FIGUREDIR):
-    fig_file_path = mkdir(FIGUREDIR,FILENUM)
-    result = json.load(open(os.path.join(RESULT_DIR,RESULT_FILENAME),'r'))
-    solo_scenarios = json.load(open(os.path.join(RESULT_DIR,RESULT_SOLO),'r'))
+    FIG_PATH = FIGUREDIR / FILENUM
+    if not FIG_PATH.exists():
+        FIG_PATH.mkdir()
+    result = json.load(open(RESULT_DIR / RESULT_FILENAME,'r'))
+    solo_scenarios = json.load(open(RESULT_DIR/RESULT_SOLO,'r'))
     actors_list = result['actors_list']
     inter_actor_relation = result['inter_actor_relation']
     actors_activity = result['actors_activity']
-    original_data_roadgragh,original_data_light = road_graph_parser(DATADIR,FILE)
-    static_element = StaticElementsWaymo(original_data_roadgragh,original_data_light)
-    static_element.create_polygon_set()
+    environment_element = EnvironmentElementsWaymo(DATADIR,FILE)
+    original_data_roadgragh,original_data_light = environment_element.road_graph_parser()
+    environment_element.create_polygon_set(parsing_mode=False)
     for actor_type,agents in actors_list.items():
         if isinstance(agents,int):
             agents = [agents]
@@ -63,16 +38,16 @@ def plot_all_scenarios(DATADIR,FILE,FILENUM,RESULT_DIR,RESULT_FILENAME,RESULT_SO
             ##################################
             agent_activity = actors_activity[actor_type][f"{actor_type}_{agent}_activity"]
             agent_interalation = inter_actor_relation[f"{actor_type}_{agent}"]
-            agent_fig_path = mkdir(fig_file_path,f"{actor_type}_{agent}")
-            agent_state,_ = rect_object_creator(actor_type,agent,DATADIR,FILE)
+            AGENT_FIG_PATH = FIG_PATH / f"{actor_type}_{agent}"
+            agent_state,_ = actor_creator(actor_type,agent,DATADIR,FILE)
             validity_proportion = agent_state.data_preprocessing()
             solo_scenario = solo_scenarios[actor_type][f"{actor_type}_{agent}"]
-            _=plot_solo_scenario(f"{actor_type}_{agent}",agent_activity,agent_interalation,agent_state,DATADIR,FILE,solo_scenario,agent_fig_path,\
-                static_element,original_data_roadgragh,original_data_light)
+            _=plot_solo_scenario(f"{actor_type}_{agent}",agent_activity,agent_interalation,agent_state,DATADIR,FILE,solo_scenario,AGENT_FIG_PATH,\
+                environment_element,original_data_roadgragh,original_data_light)
     
     return 0
 
-def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATADIR,FILE,solo_scenario,agent_fig_path,s_e,o_d_r,o_d_l):
+def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATADIR,FILE,solo_scenario,AGENT_FIG_PATH,s_e,o_d_r,o_d_l):
     """
     plot the scenarios for one agent
     """
@@ -91,7 +66,8 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     ax_list1[1] = plot_actor_activity(agent_activity["yaw_rate"],solo_scenario["la"],\
         valid_start,valid_end,ax_list1[1],"Yaw rate[rad/s]","Lateral activity [-]","Lateral")
     plt.tight_layout()
-    plt.savefig(f"{agent_fig_path}\{agent}_activity.jpg",bbox_inches="tight")
+    SOLO_ACTIVITY_PATH = AGENT_FIG_PATH / f"{agent}_activity.jpg"
+    plt.savefig(SOLO_ACTIVITY_PATH,bbox_inches="tight")
     plt.close()
     #################################
     ######  the second figure #######
@@ -107,13 +83,13 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     # generate the extended bounding boxes
     ebb = agent_state.expanded_bbox_list(expand=bbox_extension)
     # plot band relations type 1
-    ax_list2[0],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list2[0],static_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
+    ax_list2[0],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list2[0],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
     # plot band relations type 2
-    ax_list2[1],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list2[1],static_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
+    ax_list2[1],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list2[1],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
     actor_dict = {"vehicle":1,"pedestrian":2,"cyclist":3}
     for key in agent_interalation:
         guest_type,guest_id = key.split("_")
-        guest_state,_ = rect_object_creator(actor_dict[guest_type],int(guest_id),DATADIR,FILE)
+        guest_state,_ = actor_creator(actor_dict[guest_type],int(guest_id),DATADIR,FILE)
         _ = guest_state.data_preprocessing()
         guest_trajectory_polygon = guest_state.polygon_set()
         # extended trajectory pologons
@@ -147,7 +123,8 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     fig2.legend(by_label.values(),by_label.keys(),ncol=1,
            bbox_to_anchor=(axbox.x0+1.7*axbox.width,axbox.y0+1*axbox.height),markerscale=15)
     plt.tight_layout()
-    plt.savefig(f"{agent_fig_path}\{agent}_inter_actor.jpg",bbox_inches="tight")
+    AGENT_INTERACTOR_PATH = AGENT_FIG_PATH / f"{agent}_inter_actor.jpg"
+    plt.savefig(AGENT_INTERACTOR_PATH,bbox_inches="tight")
     plt.close()
     #################################
     ######  the third figure #######
@@ -157,7 +134,7 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     plt.rc('font',family='Times New Roman',size=font2['size'])
     fig3,axes3 = plt.subplots(nrows,ncols,figsize=(ncols*15,nrows*15))
     ax_list3 = axes3.flatten() #type:ignore
-    ax_list3[0],s_e,o_d_r,o_d_l = plot_road_graph(DATADIR,FILE,ax=ax_list3[0],static_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
+    ax_list3[0],s_e,o_d_r,o_d_l = plot_road_graph(DATADIR,FILE,ax=ax_list3[0],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
     ax_list3[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[0],"Actual trajectory",gradient=True,host=True,type_a=True)
     handels,labels = ax_list3[0].get_legend_handles_labels()
     by_label = OrderedDict(zip(labels,handels))
@@ -165,31 +142,32 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     ax_list3[0] = set_scaling_2(ax_list3[0],agent_state,valid_start,valid_end)
     # plot relation with static elements
     actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1,sampling_fq=10)
-    ax_list3[1],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list3[1],static_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
+    ax_list3[1],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list3[1],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
     ax_list3[1] = plot_actor_polygons(actor_expanded_multipolygon,valid_start,valid_end,ax_list3[1],"Extended trajectory host",gradient=False,host=True,type_a=False)
     ax_list3[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[1],"Actual trajectory host",gradient=False,host=True,type_a=True)
     handels,labels = ax_list3[1].get_legend_handles_labels()
     by_label = OrderedDict(zip(labels,handels))
     ax_list3[1].legend(by_label.values(),by_label.keys(),markerscale=15,prop=font2)
     plt.tight_layout()
-    plt.savefig(f"{agent_fig_path}\{agent}_roadgraph.jpg",bbox_inches="tight")
+    AGENT_ROADGRAPH_PATH = AGENT_FIG_PATH / f"{agent}_roadgraph.jpg"
+    plt.savefig(AGENT_ROADGRAPH_PATH,bbox_inches="tight")
     plt.close()
     return 0
 
-def plot_road_graph(DATADIR,FILE,ax,static_element=None,original_data_roadgragh=None,original_data_light=None):
-    if not static_element or not original_data_roadgragh or not original_data_light:
-        original_data_roadgragh,original_data_light = road_graph_parser(DATADIR,FILE)
-        static_element = StaticElementsWaymo(original_data_roadgragh,original_data_light)
-        static_element.create_polygon_set()
+def plot_road_graph(DATADIR,FILE,ax,environment_element=None,original_data_roadgragh=None,original_data_light=None):
+    if not environment_element or not original_data_roadgragh or not original_data_light:
+        environment_element = EnvironmentElementsWaymo(DATADIR,FILE)
+        original_data_roadgragh,original_data_light = environment_element.road_graph_parser()
+        environment_element.create_polygon_set(parsing_mode=False)
     # plot lanes
     for lane_type in lane_key:
-        lane_polygon_set = static_element.get_lane(lane_type)
+        lane_polygon_set = environment_element.get_lane(lane_type)
         for lane_polygon in lane_polygon_set:
                 x,y = lane_polygon.exterior.xy
                 ax.fill(x,y,c=lane_color[lane_type],label=f'{lane_type}')
     # plot other type
     for other_object_type in other_object_key:
-        other_object_polygon_list = static_element.get_other_object(other_object_type)
+        other_object_polygon_list = environment_element.get_other_object(other_object_type)
         for other_object_polygon in other_object_polygon_list:
             x,y = other_object_polygon.exterior.xy
             ax.fill(x,y,c=lane_color[other_object_type],label=f'{other_object_type}')
@@ -204,7 +182,7 @@ def plot_road_graph(DATADIR,FILE,ax,static_element=None,original_data_roadgragh=
     # handels,labels = ax.get_legend_handles_labels()
     # by_label = OrderedDict(zip(labels,handels))
     # ax.legend(by_label.values(),by_label.keys(),loc="upper right",markerscale=15.0,prop=font1)
-    return ax,static_element,original_data_roadgragh,original_data_light
+    return ax,environment_element,original_data_roadgragh,original_data_light
 
 def plot_actor_polygons(actor_polygon,valid_start:int,valid_end:int,ax,polygon_label:str,gradient:bool=False,host:bool=True,type_a:bool=True,inter_actor:bool=False):
     colors = get_color_map(ax,valid_start,valid_end,gradient)

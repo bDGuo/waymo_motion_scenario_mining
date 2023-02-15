@@ -1,9 +1,8 @@
 """
 Called by runner.py
+Contains the meaning of the tags
 """
 from collections import namedtuple
-
-# Path: utils\tags_dict.py
 
 lo_act_dict = {
 "2":'standing still',

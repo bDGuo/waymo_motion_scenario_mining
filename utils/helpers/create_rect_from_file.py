@@ -4,8 +4,8 @@ Create a rectangular object for testing from a file
 import os 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
-from rect_object import rect_object
-from data_parser import features_description
+from ActorRectangular import ActorRectangular
+from .data_parser import features_description
 import random
 import time
 
@@ -21,8 +21,7 @@ def get_agent_list(agent_type:int,DATADIR,FILE):
     # a tensor for corresponding agent type
     return tf.where(parsed['state/type']==agent_type).numpy().squeeze()
 
-
-def rect_object_creator(agent_type:int, choice:int,DATADIR,FILE):
+def actor_creator(agent_type:int, choice:int,DATADIR,FILE):
     """
     description:
     Create dynamical rectangular object from data.
@@ -47,8 +46,15 @@ def rect_object_creator(agent_type:int, choice:int,DATADIR,FILE):
     else:
         agent_index = choice
     
-    agent = rect_object(
-        {
+    actor_state_dict_tf = __actor_state(parsed,agent_index)
+
+    actor = ActorRectangular(actor_state_dict_tf)
+    if choice == -1:
+        return actor,choice
+    return actor,choice
+
+def __actor_state(parsed,agent_index):
+    actor_state_dict_tf ={
         'id':tf.gather(parsed['state/id'],agent_index), 
         'type':tf.gather(parsed['state/type'],agent_index),
         'x':tf.gather(tf.concat([parsed['state/past/x'],parsed['state/current/x'],parsed['state/future/x']],1),agent_index),
@@ -61,10 +67,7 @@ def rect_object_creator(agent_type:int, choice:int,DATADIR,FILE):
         'velocity_y':tf.gather(tf.concat([parsed['state/past/velocity_y'],parsed['state/current/velocity_y'],parsed['state/future/velocity_y']],1),agent_index),
         'validity':tf.gather(tf.concat([parsed['state/past/valid'],parsed['state/current/valid'],parsed['state/future/valid']],1),agent_index)
         }
-    )
-    if choice == -1:
-        return agent,choice
-    return agent,choice
+    return actor_state_dict_tf
 
 
 

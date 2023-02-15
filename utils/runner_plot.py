@@ -29,8 +29,8 @@ if __name__ == "__main__":
     RESULT_FILENAME = f'Waymo_{FILENUM}_{RESULT_TIME}_tag.json'
     RESULT_SOLO = f'Waymo_{FILENUM}_{RESULT_TIME}_solo.json'
     # sanity check
-    FILENAME = os.path.join(DATADIR,FILE)
-    if os.path.exists(FILENAME):
+    FILE_PATH = DATADIR / FILE
+    if FILE_PATH.exists():
         print(f"Plotting:{FILE}")
         try:
             _=plot_all_scenarios(DATADIR,FILE,FILENUM,RESULTDIR,RESULT_FILENAME,RESULT_SOLO,FIGDIR)
@@ -42,7 +42,7 @@ if __name__ == "__main__":
             logger.error(f"FILE: {FILENUM}.{e}")
     else:
         print(f"File not found:{FILE}")
-        logger.info(f"File not found:{FILENAME}")
+        logger.info(f"File not found:{FILE_PATH}")
     end = time.perf_counter()
     logger.info(f"DATA:{FILENUM}.JSON:{RESULT_SOLO}.Run time: {end-start}")
 

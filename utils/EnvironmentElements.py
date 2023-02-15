@@ -1,9 +1,11 @@
 
 import numpy as np
 from typing import Dict,Tuple
+from helpers.create_rect_from_file import get_parsed_data
 from shapely.geometry import LineString,Polygon,Point,MultiPolygon
+from pathlib import Path
 
-class StaticElementsWaymo:
+class EnvironmentElementsWaymo:
     """
     The class is an abstract class for static elements in different datasets.
     to represent all the static elements in 2-d array.
@@ -37,7 +39,7 @@ class StaticElementsWaymo:
     --------------------------------------------------------------
     
     """
-    def __init__(self,original_data_roadgragh:Dict,original_data_light:Dict) -> None:
+    def __init__(self,DATADIR,FILE) -> None:
         """
         original_data_roadgragh: dict     the original data from the dataset
         {'roadgraph_samples_xyz', 'roadgraph_samples_type', 'roadgraph_samples_lane_id',"roadgraph_dir_xyz"}
@@ -48,8 +50,8 @@ class StaticElementsWaymo:
 
         NOTICE: all time of traffic light data should be concatenated 
         """
-        self.original_data_roadgragh = original_data_roadgragh
-        self.original_data_light = original_data_light
+        self.DATADIR = DATADIR
+        self.FILE = FILE
         self.view_port = {}
         # following are the lane type set in the Waymo Motion Dataset
         self.lane_type = {'freeway':1,'surface_street':2,'bike_lane':3,
@@ -67,7 +69,41 @@ class StaticElementsWaymo:
         self.traffic_lights = {}
 
     def __call__(self):
-        pass
+        return self.create_polygon_set()
+    
+    def road_graph_parser(self)->tuple:
+        decoded_example = get_parsed_data(self.DATADIR,self.FILE)
+        # [num_points, 3] float32.
+        roadgraph_xyz = decoded_example['roadgraph_samples/xyz'].numpy()
+        roadgraph_type = decoded_example['roadgraph_samples/type'].numpy()
+        roadgraph_lane_id = decoded_example['roadgraph_samples/id'].numpy()
+        roadgraph_dir_xyz = decoded_example['roadgraph_samples/dir'].numpy()
+        # concatenate past,current and future states of traffic lights
+        #[num_steps,num_light_positions]
+        traffic_lights_id = np.concatenate([decoded_example['traffic_light_state/past/id'].numpy(),decoded_example['traffic_light_state/current/id'].numpy(),decoded_example['traffic_light_state/future/id'].numpy()],axis=0)
+        traffic_lights_valid = np.concatenate([decoded_example['traffic_light_state/past/valid'].numpy(),decoded_example['traffic_light_state/current/valid'].numpy(),decoded_example['traffic_light_state/future/valid'].numpy()],axis=0)
+        traffic_lights_state = np.concatenate([decoded_example['traffic_light_state/past/state'].numpy(),decoded_example['traffic_light_state/current/state'].numpy(),decoded_example['traffic_light_state/future/state'].numpy()],axis=0)
+        traffic_lights_pos_x = np.concatenate([decoded_example['traffic_light_state/past/x'].numpy(),decoded_example['traffic_light_state/current/x'].numpy(),decoded_example['traffic_light_state/future/x'].numpy()],axis=0)
+        traffic_lights_pos_y = np.concatenate([decoded_example['traffic_light_state/past/y'].numpy(),decoded_example['traffic_light_state/current/y'].numpy(),decoded_example['traffic_light_state/future/y'].numpy()],axis=0)
+        original_data_roadgragh = {
+            'roadgraph_xyz':roadgraph_xyz,
+            'roadgraph_type':roadgraph_type,
+            'roadgraph_dir_xyz':roadgraph_dir_xyz,
+            'roadgraph_lane_id':roadgraph_lane_id
+        }
+        original_data_light = {
+            'traffic_lights_id':traffic_lights_id,
+            'traffic_lights_valid':traffic_lights_valid,
+            'traffic_lights_state':traffic_lights_state,
+            'traffic_lights_pos_x':traffic_lights_pos_x,
+            'traffic_lights_pos_y':traffic_lights_pos_y
+        }
+        self.__set_original_data(original_data_roadgragh,original_data_light)
+        return original_data_roadgragh,original_data_light
+    
+    def __set_original_data(self,original_data_roadgragh:dict,original_data_light:dict):
+        self.original_data_roadgragh = original_data_roadgragh
+        self.original_data_light = original_data_light
         
     def __set_view_port(self)->Tuple:
         """
@@ -135,8 +171,10 @@ class StaticElementsWaymo:
         """
         return self.controlled_lane['controlled_lane_polygon']
     
-    def create_polygon_set(self):
+    def create_polygon_set(self,parsing_mode:bool=True):
         # [num_points, 3] float32.
+        if parsing_mode:
+            self.road_graph_parser()
         roadgraph_xyz = self.original_data_roadgragh['roadgraph_xyz']
         roadgraph_type = self.original_data_roadgragh['roadgraph_type']
         roadgraph_lane_id = self.original_data_roadgragh['roadgraph_lane_id']

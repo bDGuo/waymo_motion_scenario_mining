@@ -13,9 +13,9 @@ import warnings
 from logger.logger import *
 
 
-class rect_object(ABC):
+class ActorRectangular(ABC):
     
-    def __init__(self,state):
+    def __init__(self,state:dict):
         self.id = state['id']
         self.type = state['type']
         # [num_object:1,num_timestep:91]
@@ -57,8 +57,8 @@ class rect_object(ABC):
         appearance_end = valid[-1]
         appearance_length = appearance_end-appearance_start+1
         # resize yaw angle in (0,2*pi) counter clockwise
-        self.kinematics['bbox_yaw'] = self.__set_angel(self.kinematics['bbox_yaw'])
-        self.kinematics['vel_yaw'] = self.__set_angel(self.kinematics['vel_yaw'])
+        self.kinematics['bbox_yaw'] = self.__project_angel(self.kinematics['bbox_yaw'])
+        self.kinematics['vel_yaw'] = self.__project_angel(self.kinematics['vel_yaw'])
         if len(mask)==0:
             return 1
         validity_proportion = valid_length / appearance_length
@@ -91,7 +91,7 @@ class rect_object(ABC):
 
     # this method is moved to data_preprocessing.py as a seperate function
     # A tensor version of splining
-    def __Univariate_spline(self,data,valid,k=3,smoothing_factor=None):
+    def __univariate_spline(self,data,valid,k=3,smoothing_factor=None):
         """
         Univariate spline for the noisy data
         ---------------------------------
@@ -126,7 +126,7 @@ class rect_object(ABC):
         data[0,valid[-1]+1:] = np.nan
         return tf.convert_to_tensor(data,dtype=tf.float32)
     
-    def __set_angel(self,angle):
+    def __project_angel(self,angle):
         '''
         set the angle in (0,2*pi)
         '''
@@ -137,10 +137,10 @@ class rect_object(ABC):
         result = data.numpy().astype(np.float32)
         result = result.squeeze()
         result[mask] = np.nan
-        temp_pd = pd.DataFrame(result[valid[0]:valid[-1]+1])
+        temp_pd = pd.DataFrame(result[valid[0]:valid[-1]+1]).interpolate()
         # by default [np.nan,np.nan,1,np.nan,3,np.nan]-> 
                 # [np.nan,np.nan,1,2,3,3]
-        temp = temp_pd.interpolate().values.T.squeeze()
+        temp = temp_pd.values.T.squeeze() if temp_pd is not None else -1
         result[valid[0]:valid[-1]+1] = temp
         return tf.convert_to_tensor(result,dtype=tf.float32)
     

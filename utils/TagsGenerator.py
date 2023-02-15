@@ -2,29 +2,40 @@
 from typing import Any, List, Optional, Tuple, Union
 import numpy as np
 from collections import namedtuple
-from create_rect_from_file import get_parsed_data,get_agent_list,rect_object_creator
+from helpers.create_rect_from_file import get_parsed_data,get_agent_list,actor_creator
 from shapely.ops import unary_union
-from static_elements import StaticElementsWaymo
-from long_activity_detector import long_act_detector
-from lateral_activity_detector import lat_act_detector
+from EnvironmentElements import EnvironmentElementsWaymo
+from LongActDetector import LongActDetector
+from LatActDetector import LatActDetector
 import traceback
 from logger.logger import *
-from parameters import *
+from parameters.tag_parameters import *
 
 class TagsGenerator:
     def __init__(self):
-        pass
+        self.tags = {
+            'actors_list':[],
+            'inter_actor_relation':[],
+            'actors_activity':[],
+            'actors_environment_element_intersection':[]
+        }
     
     def __call__(self,DATADIR,FILE):
-        return self.generate_tags(DATADIR,FILE)
+        return self.tagging(DATADIR,FILE)
 
-    def generate_tags(self,DATADIR,FILE:str):
-        static_element = self.generate_lane_polygons(DATADIR,FILE)
+    def __repr__(self) -> str:
+        return f"TagsGenerator() tagging {self.tags.keys()}"
+
+    def tagging(self,DATADIR,FILE:str):
+        """
+        tagging the actors in the scene
+        """
+        environment_element = self.generate_lane_polygons(DATADIR,FILE)
         other_object_key = ['cross_walk','speed_bump']
-        controlled_lane = static_element.get_controlled_lane()
+        controlled_lane = environment_element.get_controlled_lane()
         actors_activity={} # [actor_type][actor_id][validity/lo_act/la_act]
-        actors_static_element_relation = {} #[actor_type][actor_id][lane_type]
-        actors_static_element_intersection = {} #[actor_type][actor_id][lane_type][expanded/trajectory],value is a list of area of intersection
+        actors_environment_element_relation = {} #[actor_type][actor_id][lane_type]
+        actors_environment_element_intersection = {} #[actor_type][actor_id][lane_type][expanded/trajectory],value is a list of area of intersection
         actors_list = {} #[actor_type] 
         AgentExtendedPolygons = namedtuple('AgentExtendedPolygons','type,key,etp,ebb,length,x,y,theta')
         agent_pp_state_list = []
@@ -33,17 +44,17 @@ class TagsGenerator:
             agent_list = get_agent_list(agent_type,DATADIR,FILE)
             ##############################################
             actor_activity = {}
-            actor_static_element_intersection = {}
+            actor_environment_element_intersection = {}
             if len(agent_list.shape) == 0:
                 agent_list = [agent_list.item()]
                 print(f"Tagging {len(agent_list)} {actor_type}...")
             else:
-                print(f"Tagging {agent_list.shape[0]} {actor_type}(s)...")
+                print(f"Tagging {agent_list.shape[0]} {actor_type}s...")
             agent_list_2 = agent_list.copy()
             for agent in agent_list:
-                agent_activity = {}
-                agent_static_element_intersection = {}
-                agent_state,_ = rect_object_creator(agent_type,agent,DATADIR,FILE)
+                # agent_activity = {}
+                agent_environment_element_intersection = {}
+                agent_state,_ = actor_creator(agent_type,agent,DATADIR,FILE)
                 valid_start,valid_end = agent_state.get_validity_range()
                 # smoothing factor equals to the number of valid time steps
                 smoothing_factor = valid_end-valid_start + 1
@@ -68,23 +79,28 @@ class TagsGenerator:
                 agent_extended_polygons = AgentExtendedPolygons(actor_type,agent_key,etp,ebb,time_steps,x,y,theta)
                 agent_pp_state_list.append(agent_extended_polygons)
                 ######### long activity detection ###########
-                lo_act,long_v,long_v1,knots = long_act_detector(agent_state,k_h,max_acc[agent_type],t_s=0.1,a_cruise=a_cruise[agent_type],\
+                long_act_detector = LongActDetector()
+                lo_act,long_v,long_v1,knots = long_act_detector.tagging(agent_state,k_h,max_acc[agent_type],t_s=0.1,a_cruise=a_cruise[agent_type],\
                                                 delta_v=delta_v[agent_type],time_steps=time_steps,k_cruise=10,\
                                                 k=k,smoothing_factor=smoothing_factor)
-                long_v = long_v.squeeze()
-                lo_act = lo_act.squeeze()
-                agent_activity['validity/appearance'] = validity_proportion
-                agent_activity['lo_act'] = lo_act.tolist()
-                agent_activity['long_v'] = long_v.tolist()
-                ##########  lane activity detection ##########
-                la_act,bbox_yaw_rate = lat_act_detector(agent_state,t_s,sampling_threshold,intgr_threshold_turn,intgr_threshold_swerv,k=3,smoothing_factor=smoothing_factor)
-                agent_activity['la_act'] = la_act.squeeze().tolist()
-                agent_activity['yaw_rate'] = bbox_yaw_rate.squeeze().tolist()
-                ###############################################
+                long_v = long_v.squeeze().tolist()
+                lo_act = lo_act.squeeze().tolist()
+                agent_activity={
+                    'validity/appearance': validity_proportion,
+                    'lo_act': lo_act,
+                    'long_v': long_v
+                }
+                #########  lateral activity detection #########
+                lat_act_detector = LatActDetector()
+                la_act,bbox_yaw_rate = lat_act_detector.tagging(agent_state,t_s,sampling_threshold,intgr_threshold_turn,intgr_threshold_swerv,k=3,smoothing_factor=smoothing_factor)
+                agent_activity['la_act'] = la_act.tolist()
+                agent_activity['yaw_rate'] = bbox_yaw_rate.tolist()
+                ##########      other properties    ###########
                 agent_activity['valid'] = np.array([valid_start,valid_end],dtype=np.float32).tolist()
                 actor_activity[f"{agent_key}_activity"] = agent_activity
                 agent_state_dict[actor_type][agent_key] = agent_state
-                # Generate actors in shapely
+                ######### interaction with environment elements #########
+                # Generate actors polygon set in shapely
                 actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1,sampling_fq=10)
                 # actor_expanded_multipolygon = actor_expanded_polygon
                 actor_trajectory_polygon = agent_state.polygon_set()
@@ -96,8 +112,8 @@ class TagsGenerator:
                     agent_lane_intersection_trajectory = np.zeros_like(lo_act).tolist()
                     agent_lane_intersection_trajectory_ratio = np.zeros_like(lo_act).tolist()
                     agent_current_lane_id = np.zeros_like(lo_act).tolist()
-                    lane_polygon_list = static_element.get_lane(key)
-                    lane_id_list = static_element.lane_id[key]
+                    lane_polygon_list = environment_element.get_lane(key)
+                    lane_id_list = environment_element.lane_id[key]
                     for step in range(valid_start,valid_end+1):
                         actor_expanded_multipolygon_step = actor_expanded_multipolygon[step]
                         actor_trajectory_polygon_step = actor_trajectory_polygon[step]
@@ -121,11 +137,11 @@ class TagsGenerator:
                     
                     if key in dashed_road_line_key:
                         for lane_key_type in lane_key:
-                            agent_lane_id[lane_key_type] =  agent_static_element_intersection[lane_key_type]['current_lane_id']
+                            agent_lane_id[lane_key_type] =  agent_environment_element_intersection[lane_key_type]['current_lane_id']
 
                     agent_lane_relation = self.__compute_relation_actor_road_feature(valid_start,valid_end,agent_lane_intersection_trajectory_ratio,agent_lane_intersection_expanded_ratio,type=key,lane_id=agent_lane_id,la_act = agent_activity['la_act'])
                     # for efficiency, we can only store the intersection area when any of the two ratios is greater than zero
-                    agent_static_element_intersection[key]={
+                    agent_environment_element_intersection[key]={
                         'relation':agent_lane_relation,
                         'expanded':agent_lane_intersection_expanded,
                         'expanded_ratio':agent_lane_intersection_expanded_ratio,
@@ -139,7 +155,7 @@ class TagsGenerator:
                     agent_other_object_intersection_trajectory = np.zeros_like(lo_act).tolist()
                     agent_other_object_intersection_expanded_ratio = np.zeros_like(lo_act).tolist()
                     agent_other_object_intersection_trajectory_ratio = np.zeros_like(lo_act).tolist()
-                    other_object_polygon_list = static_element.get_other_object(other_object_type)
+                    other_object_polygon_list = environment_element.get_other_object(other_object_type)
                     for step in range(valid_start,valid_end+1):
                         actor_expanded_multipolygon_step = actor_expanded_multipolygon[step]
                         actor_trajectory_polygon_step = actor_trajectory_polygon[step]
@@ -157,7 +173,7 @@ class TagsGenerator:
                         agent_other_object_intersection_expanded_ratio[step] = intersection_expanded/actor_expanded_multipolygon_step.area
                         agent_other_object_intersection_trajectory_ratio[step] = intersection/actor_trajectory_polygon_step.area
                     agent_lane_relation = self.__compute_relation_actor_road_feature(valid_start,valid_end,agent_other_object_intersection_trajectory_ratio,agent_other_object_intersection_expanded_ratio)
-                    agent_static_element_intersection[other_object_type]={
+                    agent_environment_element_intersection[other_object_type]={
                         'relation':agent_lane_relation,
                         'expanded':agent_other_object_intersection_expanded,
                         'expanded_ratio':agent_other_object_intersection_expanded_ratio,
@@ -165,11 +181,11 @@ class TagsGenerator:
                         'trajectory_ratio':agent_other_object_intersection_trajectory_ratio
                     }
                 # compute intersection with controlled lanes
-                controlled_lanes = static_element.get_controlled_lane()
-                controlled_lanes_id = static_element.controlled_lane_id
-                traffic_lights_state = static_element.traffic_lights['traffic_lights_state']
-                traffic_lights_id = static_element.traffic_lights['traffic_lights_lane_id']
-                traffic_lights_points= static_element.traffic_lights['points']
+                controlled_lanes = environment_element.get_controlled_lane()
+                controlled_lanes_id = environment_element.controlled_lane_id
+                traffic_lights_state = environment_element.traffic_lights['traffic_lights_state']
+                traffic_lights_id = environment_element.traffic_lights['traffic_lights_lane_id']
+                traffic_lights_points= environment_element.traffic_lights['points']
 
                 for controlled_lane,controlled_lane_id in zip(controlled_lanes,controlled_lanes_id):
                     agent_controlled_lane_intersection_expanded = np.zeros_like(lo_act).tolist()
@@ -205,7 +221,7 @@ class TagsGenerator:
                                 break
                         light_state = traffic_lights_state[:,light_index].tolist()
                         controlled_lane_key = f"controlled_lane_{controlled_lane_id}"
-                        agent_static_element_intersection[controlled_lane_key]={
+                        agent_environment_element_intersection[controlled_lane_key]={
                             'relation':actor_lane_relation,
                             'light_state':light_state,
                             'expanded':agent_controlled_lane_intersection_expanded,
@@ -213,52 +229,22 @@ class TagsGenerator:
                             'trajectory':agent_controlled_lane_intersection_trajectory,
                             'trajectory_ratio':agent_controlled_lane_intersection_trajectory_ratio
                         }
-                actor_static_element_intersection[agent_key] = agent_static_element_intersection
+                actor_environment_element_intersection[agent_key] = agent_environment_element_intersection
                 road_graph_plot_flag=0
             if isinstance(agent_list_2,list):    
                 actors_list[actor_type] = agent_list_2
             else:
                 actors_list[actor_type] = agent_list_2.tolist()
             actors_activity[actor_type] = actor_activity
-            actors_static_element_intersection[actor_type] = actor_static_element_intersection
+            actors_environment_element_intersection[actor_type] = actor_environment_element_intersection
+        ########### inter actor relation ###########
         inter_actor_relation = self.__generate_inter_actor_relation(agent_pp_state_list)
-        return actors_list,inter_actor_relation,actors_activity,actors_static_element_intersection
+        return actors_list,inter_actor_relation,actors_activity,actors_environment_element_intersection
 
     def generate_lane_polygons(self,DATADIR:str,FILE:str):
-        original_data_roadgragh,original_data_light = self.road_graph_parser(DATADIR,FILE)
-        static_element = StaticElementsWaymo(original_data_roadgragh,original_data_light)
-        static_element.create_polygon_set()
-        return static_element
-
-    def road_graph_parser(self,DATADIR:str,FILE:str)->tuple:
-        decoded_example = get_parsed_data(DATADIR,FILE)
-        # [num_points, 3] float32.
-        roadgraph_xyz = decoded_example['roadgraph_samples/xyz'].numpy()
-        roadgraph_type = decoded_example['roadgraph_samples/type'].numpy()
-        roadgraph_lane_id = decoded_example['roadgraph_samples/id'].numpy()
-        roadgraph_dir_xyz = decoded_example['roadgraph_samples/dir'].numpy()
-        # concatenate past,current and future states of traffic lights
-        #[num_steps,num_light_positions]
-        traffic_lights_id = np.concatenate([decoded_example['traffic_light_state/past/id'].numpy(),decoded_example['traffic_light_state/current/id'].numpy(),decoded_example['traffic_light_state/future/id'].numpy()],axis=0)
-        traffic_lights_valid = np.concatenate([decoded_example['traffic_light_state/past/valid'].numpy(),decoded_example['traffic_light_state/current/valid'].numpy(),decoded_example['traffic_light_state/future/valid'].numpy()],axis=0)
-        traffic_lights_state = np.concatenate([decoded_example['traffic_light_state/past/state'].numpy(),decoded_example['traffic_light_state/current/state'].numpy(),decoded_example['traffic_light_state/future/state'].numpy()],axis=0)
-        traffic_lights_pos_x = np.concatenate([decoded_example['traffic_light_state/past/x'].numpy(),decoded_example['traffic_light_state/current/x'].numpy(),decoded_example['traffic_light_state/future/x'].numpy()],axis=0)
-        traffic_lights_pos_y = np.concatenate([decoded_example['traffic_light_state/past/y'].numpy(),decoded_example['traffic_light_state/current/y'].numpy(),decoded_example['traffic_light_state/future/y'].numpy()],axis=0)
-        original_data_roadgragh = {
-            'roadgraph_xyz':roadgraph_xyz,
-            'roadgraph_type':roadgraph_type,
-            'roadgraph_dir_xyz':roadgraph_dir_xyz,
-            'roadgraph_lane_id':roadgraph_lane_id
-        }
-        original_data_light = {
-            'traffic_lights_id':traffic_lights_id,
-            'traffic_lights_valid':traffic_lights_valid,
-            'traffic_lights_state':traffic_lights_state,
-            'traffic_lights_pos_x':traffic_lights_pos_x,
-            'traffic_lights_pos_y':traffic_lights_pos_y
-        }
-        return original_data_roadgragh,original_data_light
-
+        environment_element_waymo = EnvironmentElementsWaymo(DATADIR,FILE)
+        environment_element_waymo.create_polygon_set()
+        return environment_element_waymo
 
     def __compute_relation_actor_road_feature(self,valid_start,valid_end,trajectory_ratio,expanded_ratio,type=None,lane_id=None,la_act=None):
         """
