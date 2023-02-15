@@ -1,4 +1,4 @@
-from tags_dict import lo_act_dict,la_act_dict,road_relation_dict,inter_actor_relation_dict,inter_actor_position_dict,light_state_dict
+from tags_dict import *
 from collections import Iterable
 import os
 import numpy as np
