@@ -107,7 +107,6 @@ def end_lateral_activity(future_yaw_valid_rate,threshold,current_yaw_dir,intgr_t
     if integration_nearest_opposite_yaw_rate >= intgr_threshold_turn:
         return index_nearest_opposite_yaw_rate,1
     if integration_nearest_opposite_yaw_rate >= intgr_threshold_swerv:
-        print(i,index_nearest_opposite_yaw_rate)
         return index_nearest_opposite_yaw_rate,2
 
     # for i,yaw_rate in enumerate(future_yaw_valid_rate):
