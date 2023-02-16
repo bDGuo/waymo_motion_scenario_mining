@@ -60,11 +60,13 @@ if __name__ == '__main__':
             'actors_environment_element_intersection':actors_environment_element_intersection
             }
             with open(RESULTDIR / RESULT_FILENAME,'w') as f:
+                print(f"Saving tags.")
                 json.dump(result_dict,f)
             scenario_miner = ScenarioMiner()
             solo_scenarios = scenario_miner.mining(result_dict)
             RESULT_FILENAME = f'Waymo_{FILENUM}_{RESULT_TIME}_solo.json'
             with open(RESULTDIR / RESULT_FILENAME,'w') as f:
+                print(f"Saving solo scenarios.")
                 json.dump(solo_scenarios,f)
         except Exception as e:
             trace = traceback.format_exc()
