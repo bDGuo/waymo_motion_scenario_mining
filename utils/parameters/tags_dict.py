@@ -3,6 +3,29 @@ Called by runner.py
 Contains the meaning of the tags
 """
 from collections import namedtuple
+from dataclasses import dataclass
+
+@dataclass
+class Tag:
+    lo_act_dict:dict
+    la_act_dict:dict
+    road_relation_dict:dict
+    inter_actor_relation_dict:dict
+    inter_actor_position_dict:dict
+    light_state_dict:dict
+
+    def set_lo_act(self,lo_act):
+        self.lo_act = lo_act
+    def set_la_act(self,la_act):
+        self.la_act = la_act
+    def set_road_relation(self,road_relation):
+        self.road_relation = road_relation
+    def set_inter_actor_relation(self,inter_actor_relation):
+        self.inter_actor_relation = inter_actor_relation
+    def set_inter_actor_position(self,inter_actor_position):
+        self.inter_actor_position = inter_actor_position
+    def set_light_state(self,light_state):
+        self.light_state = light_state
 
 lo_act_dict = {
 "2":'standing still',
