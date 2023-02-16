@@ -22,7 +22,7 @@ class ScenarioMiner:
             for agent in actors:
                 agent_key = f"{actor_type}_{agent}"
                 solo_scenarios[actor_type][agent_key]={}
-                # longitudinal and lateral activity
+                ##### longitudinal and lateral activity #####
                 agent_activity = actors_activity[actor_type][f"{agent_key}_activity"]
                 (valid_start,valid_end) = agent_activity['valid']
                 valid_start = int(valid_start)
@@ -33,20 +33,20 @@ class ScenarioMiner:
                 agent_la_act = agent_activity['la_act']
                 turning_points = self.__computing_turning_point(agent_la_act,int(valid_start),int(valid_end))
                 solo_scenarios[actor_type][agent_key]['la']=self.__summarizing_events(agent_la_act,turning_points,valid_start,valid_end,'la',la_act_dict)
-                # agent and static element relation
+                ##### agent and environment element relation #####
                 agent_elements_relation = actors_environment_element_intersection[actor_type][agent_key]
-                solo_scenarios[actor_type][agent_key]['static'] = {}
+                solo_scenarios[actor_type][agent_key]['environment'] = {}
                 for (element_type,element) in agent_elements_relation.items():
                     relation = element['relation']
                     if sum(relation[valid_start:valid_end+1])== -(valid_end-valid_start+1):
                         continue
                     else:
                         turning_points = self.__computing_turning_point(relation,valid_start,valid_end)
-                        solo_scenarios[actor_type][agent_key]['static'][element_type] = self.__summarizing_events(relation,turning_points,valid_start,valid_end,element_type,road_relation_dict)
+                        solo_scenarios[actor_type][agent_key]['environment'][element_type] = self.__summarizing_events(relation,turning_points,valid_start,valid_end,element_type,road_relation_dict)
                         if element_type.startswith("controlled_lane"):
                             turning_points = self.__computing_turning_point(element['light_state'],valid_start,valid_end)
-                            solo_scenarios[actor_type][agent_key]['static'][element_type]['light_state'] = self.__summarizing_events(element['light_state'],turning_points,valid_start,valid_end,'light',light_state_dict)
-                # inter-actor relation
+                            solo_scenarios[actor_type][agent_key]['environment'][element_type]['light_state'] = self.__summarizing_events(element['light_state'],turning_points,valid_start,valid_end,'light',light_state_dict)
+                ##### inter-actor relation #####
                 inter_actor = inter_actor_relation[agent_key]
                 solo_scenarios[actor_type][agent_key]['inter_actor'] = {}
                 for (actor_name,inter_actor_relation_position) in inter_actor.items():
@@ -66,7 +66,7 @@ class ScenarioMiner:
         i.e. the start of another type of activity
         """
         activity_diff = np.diff(np.array(activity[valid_start:valid_end+1]))
-        turning_points = np.where(activity_diff!=0)[0] + valid_start
+        turning_points = np.where(activity_diff!=0)[0] + valid_start + 1
         return np.insert(turning_points,0,valid_start).tolist()
         # turning_points = [valid_start]
         # for i in range(valid_start+1,valid_end):
@@ -77,7 +77,7 @@ class ScenarioMiner:
     def __summarizing_events(self,activity,turning_points:list,valid_start:int,valid_end:int,event_type:str,activity_type:dict)->dict:
         """
         summarize events from activity and turning points
-        event_type: [lo, la]
+        event_type: tags_dict.keys()
         format:
         key:{event_type}_{number}
         value:{activity_type,start_frame,end_frame}
