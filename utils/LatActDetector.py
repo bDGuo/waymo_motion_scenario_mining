@@ -42,7 +42,7 @@ class LatActDetector:
                     1       turning left
                     2       swerving left
                     -1      turning right
-                    -2     swerving right
+                    -2      swerving right
                     -5      invalid data
         bbox_yaw_rate: cubic splined yaw rate           np.array [time_steps=91,]
         """
