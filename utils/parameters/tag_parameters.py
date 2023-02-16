@@ -24,7 +24,7 @@ kernel = 6
 sampling_threshold = 8.72e-2  # 
 time_steps = 91
 intgr_threshold_turn = sampling_threshold*9 # 8.72e-2*9 = 0.785 rad. = 44.97 deg.
-intgr_threshold_swerv = sampling_threshold*0 # 8.72e-2*4 = 0.349 rad. = 19.95 deg.
+intgr_threshold_swerv = sampling_threshold*1 # 8.72e-2*1 = 0.087 rad. = 4.99 deg.
 
 bbox_extension = 2 # extend length and width of the bbox by 2 times
 lane_key = ['freeway','surface_street','bike_lane']
