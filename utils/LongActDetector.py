@@ -14,6 +14,7 @@ class LongActDetector:
     """
     def __init__(self) -> None:
         self.lo_act_dict = lo_act_dict
+        self.new_tag_dict = dict([(v,int(k)) for k,v in self.lo_act_dict.items()])
 
     def __repr__(self) -> str:
         return f"Longitudinal Activity Detector: Tags {self.lo_act_dict}."
@@ -39,13 +40,8 @@ class LongActDetector:
         k:          order for univariate spline                 int
         ------------------------------------------------------
         Output:
-        lo_event: longitudinal event of sample time    tf.tensor [1,time_steps=91]
-                1      accelerating
-                -1      decelerating
-                0      cruising
-                2      stand still
-                -2      reversing
-                -5      invalid
+        lo_act: longitudinal activity of sample time    tf.tensor [1,time_steps=91]
+        refer the parameters.tag_dict for the meaning of the tags
         long_v: splined longitudinal speed                 tf.tensor [1,time_steps=91]
         long_v1: not splined long. speed
         knots:  #knots of splining
@@ -71,8 +67,8 @@ class LongActDetector:
 
     def __long_act_detector_core(self,long_v,valid,rect,k_h,t_s,a_cruise,time_steps,delta_v,k_cruise):
         lo_act = np.zeros_like(long_v)
-        lo_act[:valid[0]] = -5
-        lo_act[valid[-1]+1:] = -5
+        lo_act[:valid[0]] = self.new_tag_dict['invalid']
+        lo_act[valid[-1]+1:] = self.new_tag_dict['invalid']
         for i in range(valid[0],valid[-1]+1):
             # acceleration check
             acc_bool = self.__acceleration(long_v[valid[0]:valid[-1]+1],i-valid[0],k_h,t_s,a_cruise,time_steps,delta_v)
@@ -108,9 +104,9 @@ class LongActDetector:
                     lo_act = self.__removing_short_cruising_act(lo_act,long_v,i,non_cruise_ind,valid[0])
         cruise_ind = np.where(lo_act==0)[0]
         small_v_ind = np.where(np.abs(long_v)*t_s<=0.01*rect.kinematics['length'].numpy().squeeze()[valid][-1])[0]
-        lo_act[np.intersect1d(cruise_ind,small_v_ind)]=2
+        lo_act[np.intersect1d(cruise_ind,small_v_ind)] = self.new_tag_dict['standing still']
         # reversing
-        lo_act = np.where(long_v<-0.1,-2,lo_act)
+        lo_act = np.where(long_v<-0.1,self.new_tag_dict['reversing'],lo_act)
         long_v[:valid[0]] = -5
         long_v[valid[-1]+1:] = -5
         return lo_act.squeeze(),long_v.squeeze()
@@ -168,14 +164,14 @@ class LongActDetector:
         k_end = j if j < valid_end-k_h-1 else i
         if np.abs(valid_long_v[k_end]-valid_long_v[i]) > delta_v:
             if ACC:
-                return 1,k_end
+                return self.new_tag_dict['accelerating'],k_end
             else:
-                return -1,k_end
+                return self.new_tag_dict['decelerating'],k_end
         else:
             if ACC:
-                return 1,i
+                return self.new_tag_dict['accelerating'],i
             else:
-                return -1,i
+                return self.new_tag_dict['decelerating'],i
         
 
     def __removing_short_cruising_act(self,lo_act,long_v,i,non_cruise_ind,valid_start:float):
@@ -191,13 +187,13 @@ class LongActDetector:
         # -1 0...0 1
         if lo_act[non_cruise_ind[i]]==-1 and lo_act[non_cruise_ind[i+1]]==1:    
             v_min_ind = np.argmin(long_v[(non_cruise_ind[i]+1):(non_cruise_ind[i+1])])
-            lo_act[(non_cruise_ind[i]+1):(non_cruise_ind[i]+1+v_min_ind+1)] = -1
-            lo_act[(non_cruise_ind[i]+1+v_min_ind+1): (non_cruise_ind[i+1])] = 1
+            lo_act[(non_cruise_ind[i]+1):(non_cruise_ind[i]+1+v_min_ind+1)] = self.new_tag_dict['decelerating']
+            lo_act[(non_cruise_ind[i]+1+v_min_ind+1): (non_cruise_ind[i+1])] = self.new_tag_dict['accelerating']
         # 1 0...0 -1
         if lo_act[non_cruise_ind[i]]==1 and lo_act[non_cruise_ind[i+1]]==-1:  
             v_max_ind = np.argmax(long_v[(non_cruise_ind[i]+1):(non_cruise_ind[i+1])])
-            lo_act[(non_cruise_ind[i]+1):(non_cruise_ind[i]+1+v_max_ind+1)] = 1
-            lo_act[(non_cruise_ind[i]+1+v_max_ind+1): (non_cruise_ind[i+1])] = -1
+            lo_act[(non_cruise_ind[i]+1):(non_cruise_ind[i]+1+v_max_ind+1)] = self.new_tag_dict['accelerating']
+            lo_act[(non_cruise_ind[i]+1+v_max_ind+1): (non_cruise_ind[i+1])] = self.new_tag_dict['decelerating']
 
         return lo_act
 
