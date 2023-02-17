@@ -59,9 +59,9 @@ road_relation_dict = {
 
 inter_actor_relation_dict = {
 "0":"not related",
-"1":"related 1",
-"2":"related 2",
-"3":"related 1 and 2"
+"1":"estimated collision",
+"2":"close proximity",
+"3":"estimated collision and close proximity"
 }
 inter_actor_position_dict = {
 "0":"not related",
