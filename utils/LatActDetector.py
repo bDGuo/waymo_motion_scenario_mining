@@ -14,6 +14,7 @@ class LatActDetector:
     """
     def __init__(self):
         self.lat_act_dict = la_act_dict
+        self.new_tag_dict = dict([(v,int(k)) for k,v in self.lat_act_dict.items()])
     def __repr__(self) -> str:
         return f"Lateral Activity Detector: Tags {self.lat_act_dict}."
     
@@ -59,8 +60,8 @@ class LatActDetector:
                 bbox_yaw_rate[i] = np.nan
             return la_act,bbox_yaw_rate
             
-        la_act[:valid[0]+1] = -5
-        la_act[valid[-1]+1:] = -5
+        la_act[:valid[0]+1] = self.new_tag_dict['invalid']
+        la_act[valid[-1]+1:] = self.new_tag_dict['invalid']
         bbox_yaw_rate[:valid[0]] = np.nan
         bbox_yaw_rate[valid[-1]+1:] = np.nan
         # compute yaw rate [valid_length]
