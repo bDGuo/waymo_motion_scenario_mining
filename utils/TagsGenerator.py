@@ -2,7 +2,7 @@
 from typing import Any, List, Optional, Tuple, Union
 import numpy as np
 from collections import namedtuple
-from helpers.create_rect_from_file import get_parsed_data,get_agent_list,actor_creator
+from helpers.create_rect_from_file import get_agent_list,actor_creator
 from shapely.ops import unary_union
 from EnvironmentElements import EnvironmentElementsWaymo
 from LongActDetector import LongActDetector
@@ -10,6 +10,7 @@ from LatActDetector import LatActDetector
 import traceback
 from logger.logger import *
 from parameters.tag_parameters import *
+from parameters.tags_dict import *
 
 class TagsGenerator:
     def __init__(self):
@@ -107,78 +108,76 @@ class TagsGenerator:
                 # compute intersection with all lane types
                 agent_lane_id = {key:[] for key in lane_key}
                 for key in (lane_key+dashed_road_line_key):
-                    agent_lane_intersection_expanded = np.zeros_like(lo_act).tolist()
-                    agent_lane_intersection_expanded_ratio = np.zeros_like(lo_act).tolist()
-                    agent_lane_intersection_trajectory = np.zeros_like(lo_act).tolist()
-                    agent_lane_intersection_trajectory_ratio = np.zeros_like(lo_act).tolist()
-                    agent_current_lane_id = np.zeros_like(lo_act).tolist()
+                    expanded,expanded_ratio,\
+                    traj,traj_ratio,\
+                    current_controlled_lane,current_lane_id = self.__initialize_with_example(lo_act,6)
+
                     lane_polygon_list = environment_element.get_lane(key)
                     lane_id_list = environment_element.lane_id[key]
                     for step in range(valid_start,valid_end+1):
-                        actor_expanded_multipolygon_step = actor_expanded_multipolygon[step]
-                        actor_trajectory_polygon_step = actor_trajectory_polygon[step]
+                        # actor_expanded_multipolygon[step] = actor_expanded_multipolygon[step]
+                        # actor_trajectory_polygon[step] = actor_trajectory_polygon[step]
                         intersection,intersection_expanded = 0,0
                         # np.nan,int64 is not JSON serializable!
                         pos_lane_id = -99.0 # dummy lane id
                         pos_lane_intersection = 0
                         for (lane_polygon,lane_id) in zip(lane_polygon_list,lane_id_list):
-                            intersection_expanded += actor_expanded_multipolygon_step.intersection(lane_polygon).area
-                            current_actual_intersection = actor_trajectory_polygon_step.intersection(lane_polygon).area
+                            intersection_expanded += actor_expanded_multipolygon[step].intersection(lane_polygon).area
+                            current_actual_intersection = actor_trajectory_polygon[step].intersection(lane_polygon).area
                             if current_actual_intersection > pos_lane_intersection:
                                 pos_lane_id = lane_id
                                 pos_lane_intersection = current_actual_intersection
                             intersection += current_actual_intersection
-                            
-                        agent_lane_intersection_expanded[step]=intersection_expanded
-                        agent_lane_intersection_trajectory[step]=intersection
-                        agent_lane_intersection_expanded_ratio[step] = intersection_expanded/actor_expanded_multipolygon_step.area
-                        agent_lane_intersection_trajectory_ratio[step] = intersection/actor_trajectory_polygon_step.area
-                        agent_current_lane_id[step] = float(pos_lane_id)
+                        
+                        current_controlled_lane[step] = 1 if pos_lane_id in environment_element.controlled_lane_id else 0
+                        expanded[step]=intersection_expanded
+                        traj[step]=intersection
+                        expanded_ratio[step] = intersection_expanded/actor_expanded_multipolygon[step].area
+                        traj_ratio[step] = intersection/actor_trajectory_polygon[step].area
+                        current_lane_id[step] = float(pos_lane_id)
                     
                     if key in dashed_road_line_key:
                         for lane_key_type in lane_key:
                             agent_lane_id[lane_key_type] =  agent_environment_element_intersection[lane_key_type]['current_lane_id']
 
-                    agent_lane_relation = self.__compute_relation_actor_road_feature(valid_start,valid_end,agent_lane_intersection_trajectory_ratio,agent_lane_intersection_expanded_ratio,type=key,lane_id=agent_lane_id,la_act = agent_activity['la_act'])
+                    agent_lane_relation = self.__compute_relation_actor_road_feature(valid_start,valid_end,traj_ratio,expanded_ratio,type=key,lane_id=agent_lane_id,la_act = agent_activity['la_act'])
                     # for efficiency, we can only store the intersection area when any of the two ratios is greater than zero
                     agent_environment_element_intersection[key]={
                         'relation':agent_lane_relation,
-                        'expanded':agent_lane_intersection_expanded,
-                        'expanded_ratio':agent_lane_intersection_expanded_ratio,
-                        'trajectory':agent_lane_intersection_trajectory,
-                        'trajectory_ratio':agent_lane_intersection_trajectory_ratio,
-                        'current_lane_id':agent_current_lane_id
+                        'expanded':expanded,
+                        'expanded_ratio':expanded_ratio,
+                        'trajectory':traj,
+                        'trajectory_ratio':traj_ratio,
+                        'current_controlled_lane':current_controlled_lane,
+                        'current_lane_id':current_lane_id
                     }
                 # compute intersection with other types of objects
                 for other_object_type in other_object_key:
-                    agent_other_object_intersection_expanded = np.zeros_like(lo_act).tolist()
-                    agent_other_object_intersection_trajectory = np.zeros_like(lo_act).tolist()
-                    agent_other_object_intersection_expanded_ratio = np.zeros_like(lo_act).tolist()
-                    agent_other_object_intersection_trajectory_ratio = np.zeros_like(lo_act).tolist()
+                    expanded,traj,expanded_ratio,traj_ratio = self.__initialize_with_example(lo_act,4)
                     other_object_polygon_list = environment_element.get_other_object(other_object_type)
                     for step in range(valid_start,valid_end+1):
-                        actor_expanded_multipolygon_step = actor_expanded_multipolygon[step]
-                        actor_trajectory_polygon_step = actor_trajectory_polygon[step]
+                        # actor_expanded_multipolygon[step] = actor_expanded_multipolygon[step]
+                        # actor_trajectory_polygon[step] = actor_trajectory_polygon[step]
                         intersection,intersection_expanded = 0,0
-                        # intersection = unary_union(other_object_polygon_list).intersection(actor_trajectory_polygon_step).area
-                        # intersection_expanded = unary_union(other_object_polygon_list).intersection(actor_expanded_multipolygon_step).area
+                        # intersection = unary_union(other_object_polygon_list).intersection(actor_trajectory_polygon[step]).area
+                        # intersection_expanded = unary_union(other_object_polygon_list).intersection(actor_expanded_multipolygon[step]).area
                         for other_object_polygon in other_object_polygon_list:
                             try:
-                                intersection_expanded += actor_expanded_multipolygon_step.intersection(other_object_polygon).area
-                                intersection += actor_trajectory_polygon_step.intersection(other_object_polygon).area
+                                intersection_expanded += actor_expanded_multipolygon[step].intersection(other_object_polygon).area
+                                intersection += actor_trajectory_polygon[step].intersection(other_object_polygon).area
                             except Exception as e:
                                 logger.error(f"FILE:{FILE},Intersection computation: {e}.\n type:{other_object_type},polygon:{other_object_polygon}")
-                        agent_other_object_intersection_expanded[step]=intersection_expanded
-                        agent_other_object_intersection_trajectory[step]=intersection
-                        agent_other_object_intersection_expanded_ratio[step] = intersection_expanded/actor_expanded_multipolygon_step.area
-                        agent_other_object_intersection_trajectory_ratio[step] = intersection/actor_trajectory_polygon_step.area
-                    agent_lane_relation = self.__compute_relation_actor_road_feature(valid_start,valid_end,agent_other_object_intersection_trajectory_ratio,agent_other_object_intersection_expanded_ratio)
+                        expanded[step]=intersection_expanded
+                        traj[step]=intersection
+                        expanded_ratio[step] = intersection_expanded/actor_expanded_multipolygon[step].area
+                        traj_ratio[step] = intersection/actor_trajectory_polygon[step].area
+                    agent_lane_relation = self.__compute_relation_actor_road_feature(valid_start,valid_end,traj_ratio,expanded_ratio)
                     agent_environment_element_intersection[other_object_type]={
                         'relation':agent_lane_relation,
-                        'expanded':agent_other_object_intersection_expanded,
-                        'expanded_ratio':agent_other_object_intersection_expanded_ratio,
-                        'trajectory':agent_other_object_intersection_trajectory,
-                        'trajectory_ratio':agent_other_object_intersection_trajectory_ratio
+                        'expanded':expanded,
+                        'expanded_ratio':expanded_ratio,
+                        'trajectory':traj,
+                        'trajectory_ratio':traj_ratio
                     }
                 # compute intersection with controlled lanes
                 controlled_lanes = environment_element.get_controlled_lane()
@@ -188,24 +187,19 @@ class TagsGenerator:
                 traffic_lights_points= environment_element.traffic_lights['points']
 
                 for controlled_lane,controlled_lane_id in zip(controlled_lanes,controlled_lanes_id):
-                    agent_controlled_lane_intersection_expanded = np.zeros_like(lo_act).tolist()
-                    agent_controlled_lane_intersection_trajectory = np.zeros_like(lo_act).tolist()
-                    agent_controlled_lane_intersection_expanded_ratio = np.zeros_like(lo_act).tolist()
-                    agent_controlled_lane_intersection_trajectory_ratio = np.zeros_like(lo_act).tolist()
-                    # intersection,intersection_expanded = [],[]
-                    # intersection_ratio,intersection_expanded_ratio = [],[]
+                    expanded,traj,expanded_ratio,traj_ratio = self.__initialize_with_example(lo_act,4)
                     intersected_polygons,intersected_polygons_expanded = [],[]
                     for step in range(valid_start,valid_end+1):
-                        actor_expanded_multipolygon_step = actor_expanded_multipolygon[step]
-                        actor_trajectory_polygon_step = actor_trajectory_polygon[step]
-                        agent_controlled_lane_intersection_expanded[step]=actor_expanded_multipolygon_step.intersection(controlled_lane).area
-                        agent_controlled_lane_intersection_trajectory[step]=actor_trajectory_polygon_step.intersection(controlled_lane).area
-                        agent_controlled_lane_intersection_expanded_ratio[step] = actor_expanded_multipolygon_step.intersection(controlled_lane).area/actor_expanded_multipolygon_step.area
-                        agent_controlled_lane_intersection_trajectory_ratio[step] = actor_trajectory_polygon_step.intersection(controlled_lane).area/actor_trajectory_polygon_step.area
-                        intersected_polygons.append(actor_expanded_multipolygon_step.intersection(controlled_lane))
-                        intersected_polygons_expanded.append(actor_expanded_multipolygon_step.intersection(controlled_lane))
-                    actor_lane_relation = self.__compute_relation_actor_road_feature(valid_start,valid_end,agent_controlled_lane_intersection_trajectory_ratio,agent_controlled_lane_intersection_expanded_ratio)
-                    if np.sum(agent_controlled_lane_intersection_expanded)==0 and np.sum(agent_controlled_lane_intersection_trajectory)==0:
+                        # actor_expanded_multipolygon[step] = actor_expanded_multipolygon[step]
+                        # actor_trajectory_polygon[step] = actor_trajectory_polygon[step]
+                        expanded[step]=actor_expanded_multipolygon[step].intersection(controlled_lane).area
+                        traj[step]=actor_trajectory_polygon[step].intersection(controlled_lane).area
+                        expanded_ratio[step] = actor_expanded_multipolygon[step].intersection(controlled_lane).area/actor_expanded_multipolygon[step].area
+                        traj_ratio[step] = actor_trajectory_polygon[step].intersection(controlled_lane).area/actor_trajectory_polygon[step].area
+                        intersected_polygons.append(actor_expanded_multipolygon[step].intersection(controlled_lane))
+                        intersected_polygons_expanded.append(actor_expanded_multipolygon[step].intersection(controlled_lane))
+                    actor_lane_relation = self.__compute_relation_actor_road_feature(valid_start,valid_end,traj_ratio,expanded_ratio)
+                    if np.sum(expanded)==0 and np.sum(traj)==0:
                         flag_controlled_lane = False
                         continue
                     else:
@@ -213,10 +207,10 @@ class TagsGenerator:
                         intersected_polygon_expanded = unary_union(intersected_polygons_expanded)
                         light_index = 0
                         for light_index_temp,traffic_light_point in enumerate(traffic_lights_points):
-                            if np.sum(agent_controlled_lane_intersection_trajectory)>0 and intersected_polygon.contains(traffic_light_point):
+                            if np.sum(traj)>0 and intersected_polygon.contains(traffic_light_point):
                                 light_index = light_index_temp
                                 break
-                            elif np.sum(agent_controlled_lane_intersection_expanded)>0 and intersected_polygon_expanded.contains(traffic_light_point):
+                            elif np.sum(expanded)>0 and intersected_polygon_expanded.contains(traffic_light_point):
                                 light_index = light_index_temp
                                 break
                         light_state = traffic_lights_state[:,light_index].tolist()
@@ -224,10 +218,10 @@ class TagsGenerator:
                         agent_environment_element_intersection[controlled_lane_key]={
                             'relation':actor_lane_relation,
                             'light_state':light_state,
-                            'expanded':agent_controlled_lane_intersection_expanded,
-                            'expanded_ratio':agent_controlled_lane_intersection_expanded_ratio,
-                            'trajectory':agent_controlled_lane_intersection_trajectory,
-                            'trajectory_ratio':agent_controlled_lane_intersection_trajectory_ratio
+                            'expanded':expanded,
+                            'expanded_ratio':expanded_ratio,
+                            'trajectory':traj,
+                            'trajectory_ratio':traj_ratio
                         }
                 actor_environment_element_intersection[agent_key] = agent_environment_element_intersection
                 road_graph_plot_flag=0
@@ -245,37 +239,48 @@ class TagsGenerator:
         environment_element_waymo = EnvironmentElementsWaymo(DATADIR,FILE)
         environment_element_waymo.create_polygon_set()
         return environment_element_waymo
+    
+    def __initialize_with_example(self,example,number):
+        initialized = [np.zeros_like(example) for _ in range(number)]
+        return initialized
+
+    def __compute_intersection(self,lo_act,element_key1,actor_trajectory_polygon,actor_expanded_multipolygon,valid_start,valid_end,agent_environment_element_intersection:dict,element_key2=None):
+        """
+        compute the intersection between actor and environment element
+        TODO: transfer the intersection funtion from tagging() to here
+        """
+        if element_key2 is not None:
+            element_key = element_key1+element_key2
+        else:
+            element_key = element_key1
+        for element_type in element_key:
+            agent_element_intersection_expanded = np.zeros_like(lo_act).tolist()
+            agent_element_intersection_expanded_ratio = np.zeros_like(lo_act).tolist()
+            agent_element_intersection_trajectory = np.zeros_like(lo_act).tolist()
+            agent_element_intersection_trajectory_ratio = np.zeros_like(lo_act).tolist()
+            agent_current_element_id = np.zeros_like(lo_act).tolist()
+        pass
 
     def __compute_relation_actor_road_feature(self,valid_start,valid_end,trajectory_ratio,expanded_ratio,type=None,lane_id=None,la_act=None):
         """
         compute the relation between the actor and the road features
-        -5 ---  invalid
-        -1 --- not relative
-        0 --- leaving
-        1 --- approaching
-        2 --- entering
-        3 --- staying
+        refer the parameters.tag_dict for the meaning of the relation 
         """
+        new_tag_dict = dict([val,key] for key,val in road_relation_dict.items())
+
         if type in dashed_road_line_key:
             return self.__compute_actor_road_lane_change(valid_start,valid_end,trajectory_ratio,lane_id,la_act)
-        actor_lane_relation = np.ones_like(expanded_ratio)*(-1)
+        actor_lane_relation = np.ones_like(expanded_ratio) * int(new_tag_dict["not relative"])
         trajectory_ratio = np.array(trajectory_ratio)
         expanded_ratio = np.array(expanded_ratio)
 
         interesting_threshold = 1e-2
         # ratio <= interesting threshold is not relative
         if np.sum(trajectory_ratio) == 0 and np.sum(expanded_ratio) == 0:
-            # making sure the invalid is -5
-            actor_lane_relation[:int(valid_start)] = -5
-            actor_lane_relation[int(valid_end)+1:] = -5
-            return actor_lane_relation.tolist()
+            pass
         elif np.sum(trajectory_ratio) == 0 and np.sum(expanded_ratio) != 0:
             approaching = np.where(expanded_ratio>interesting_threshold)[0]
-            actor_lane_relation[approaching] =1
-            # making sure the invalid is -5
-            actor_lane_relation[:int(valid_start)] = -5
-            actor_lane_relation[int(valid_end)+1:] = -5
-            return actor_lane_relation.tolist()
+            actor_lane_relation[approaching] = int(new_tag_dict["approaching"])
         else:
             # set the actual ratio greater than 1 to 1
             trajectory_ratio = np.where(trajectory_ratio>1,1,trajectory_ratio)
@@ -285,34 +290,32 @@ class TagsGenerator:
             staying = np.intersect1d(np.where(np.abs(trajectory_ratio_dot)<=interesting_threshold)[0]+1,relative_time)
             entering = np.intersect1d(np.where(trajectory_ratio_dot>interesting_threshold)[0]+1,relative_time)
             leaving = np.intersect1d(np.where(trajectory_ratio_dot<-interesting_threshold)[0]+1,relative_time)
-            actor_lane_relation[staying] = 3
-            actor_lane_relation[entering] = 2
-            actor_lane_relation[leaving] = 0
+            actor_lane_relation[staying] = int(new_tag_dict["staying"])
+            actor_lane_relation[entering] = int(new_tag_dict["entering"])
+            actor_lane_relation[leaving] = int(new_tag_dict["leaving"])
             actor_lane_relation[0] = actor_lane_relation[1]
             actor_lane_relation[valid_start]=actor_lane_relation[valid_start+1]
-
             if np.sum(expanded_ratio) != 0:
                 approaching = np.where(expanded_ratio>0)[0]
                 not_relative = np.where(trajectory_ratio<=interesting_threshold)[0]
                 filtered_approaching = np.intersect1d(approaching,not_relative)
                 # expanded_ratio > 0 and actor_lane_relation == -1 ==>approaching
-                actor_lane_relation[filtered_approaching] =1
-            # making sure the invalid is -5
-            actor_lane_relation[:int(valid_start)] = -5
-            actor_lane_relation[int(valid_end)+1:] = -5
-            return actor_lane_relation.tolist()
+                actor_lane_relation[filtered_approaching] = road_relation_dict["approaching"]
+        # making sure the invalid is -5
+        actor_lane_relation[:int(valid_start)] = int(new_tag_dict["invalid"])
+        actor_lane_relation[int(valid_end)+1:] = int(new_tag_dict["invalid"])
+        return actor_lane_relation.tolist()
 
     def __compute_actor_road_lane_change(self,valid_start,valid_end,trajectory_ratio,lane_id,la_act): 
         """
         compute time instances when lane change happens
-        -5 --- not relative
-        10 --- not lane change
-        11 --- lane change
+        refer the parameters.tag_dict for the meaning of the relation 
         """
-        actor_road_lane_change = np.ones_like(trajectory_ratio)*10 
+        new_tag_dict = dict([val,key] for key,val in road_relation_dict.items())
+
+        actor_road_lane_change = np.ones_like(trajectory_ratio) * int(new_tag_dict["no lane change"])
         trajectory_ratio = np.array(trajectory_ratio)
-        lane_change_segments = np.split(trajectory_ratio,np.where(trajectory_ratio==0)[0])
-        none_zero_segments = np.split(np.where(trajectory_ratio!=0)[0],np.where(np.diff(np.where(trajectory_ratio!=0)[0])>1)[0]+1)
+        none_zero_segments = np.split(np.where(trajectory_ratio!=0)[0],np.where(np.diff(np.nonzero(trajectory_ratio)[0])>1)[0]+1)
         abs_la_act = np.abs(la_act)
 
         for key in lane_key:
@@ -321,19 +324,18 @@ class TagsGenerator:
                     lane_id_segment = lane_id[key][segment[0]:segment[-1]+1]
                     abs_la_act_segment = abs_la_act[segment[0]:segment[-1]+1]
                     if len(np.where(np.diff(lane_id_segment)>0)[0]) and len(np.where(abs_la_act_segment==2)[0]):
-                        actor_road_lane_change[segment[0]:segment[-1]+1] = 11
-        actor_road_lane_change[:int(valid_start)] = -5
-        actor_road_lane_change[int(valid_end)+1:] = -5
+                        actor_road_lane_change[segment[0]:segment[-1]+1] = int(new_tag_dict["lane change"])
+        actor_road_lane_change[:int(valid_start)] = int(new_tag_dict["invalid"])
+        actor_road_lane_change[int(valid_end)+1:] = int(new_tag_dict["invalid"])
 
         return actor_road_lane_change.tolist()
 
     def __generate_inter_actor_relation(self,agent_pp_state_list:list):
         """
-        0 --- not related
-        1 --- related by extended trajectory polygons   (etp or type 1)
-        2 --- related by extended bounding boxes    (ebb or type 2)
-        3 --- related by both etp and ebb (type 3)
+        generate the inter actor relation
+        refer the parameters.tag_dict for the meaning of the relation 
         """
+        new_tag_dict = dict([val,key] for key,val in inter_actor_relation_dict.items())
         inter_actor_relation = {}
         for agent_pp_state_1 in agent_pp_state_list:
             agent_key_1 = agent_pp_state_1.key
@@ -350,8 +352,8 @@ class TagsGenerator:
                 # agent_type_2 = agent_pp_state_2.type
                 agent_etp_2 = agent_pp_state_2.etp
                 agent_ebb_2 = agent_pp_state_2.ebb
-                relation = np.zeros(length)
-                position = np.zeros(length)
+                relation = np.ones(length) * int(new_tag_dict['not related'])
+                position = np.ones(length) * int(new_tag_dict['not related'])
                 for step in range(length):
                     if agent_etp_1[step][0].area == 0 or agent_etp_2[step][0].area == 0:
                         continue
@@ -364,11 +366,11 @@ class TagsGenerator:
                                 break
                         intersection_ebb = agent_ebb_1[step].intersection(agent_ebb_2[step]).area
                         if etp_flag and intersection_ebb:
-                            relation[step] = 3
+                            relation[step] = int(new_tag_dict['estimated collision and close proximity'])
                         elif etp_flag and not intersection_ebb:
-                            relation[step] = 1
+                            relation[step] = int(new_tag_dict['estimated collision'])
                         elif not etp_flag and intersection_ebb:
-                            relation[step] = 2
+                            relation[step] = int(new_tag_dict['close proximity'])
                         position[step] = self.__compute_actor_position_relation(agent_pp_state_1,agent_pp_state_2,step)
                         #compute the position relation
                 if np.sum(relation):
@@ -380,12 +382,10 @@ class TagsGenerator:
 
     def __compute_actor_position_relation(self,agent_pp_state_1,agent_pp_state_2,step):
         """
-        0 --- not related
-        1 --- front
-        2 --- left
-        3 --- right
-        4 --- back
+        compute the position relation between two agents
+        refer the parameters.tag_dict for the meaning of the relation 
         """
+        new_tag_dict = dict([val,key] for key,val in inter_actor_position_dict.items())
         theta = agent_pp_state_1.theta[step]
         position_relation_vector = np.array([agent_pp_state_2.x[step]-agent_pp_state_1.x[step],agent_pp_state_2.y[step]-agent_pp_state_1.y[step]])
         heading_vector = np.array([np.cos(theta),np.sin(theta)])
@@ -394,13 +394,13 @@ class TagsGenerator:
 
         # np.arctan2 (-pi,pi)
         if -0.25 * np.pi < np.arctan2(sin_,cos_) <= 0.25 * np.pi:
-            position_relation = 1 # front
+            position_relation = new_tag_dict['front']   # front
         elif 0.25 * np.pi < np.arctan2(sin_,cos_) <= 0.75 * np.pi:
-            position_relation = 2 # left
+            position_relation = new_tag_dict['left']    # left
         elif -0.75 * np.pi < np.arctan2(sin_,cos_) <= -0.25 * np.pi:
-            position_relation = 3 # right
+            position_relation = new_tag_dict['right']   # right
         else:
-            position_relation = 4 # back
+            position_relation = new_tag_dict['back']    # back
         return position_relation
     
 
