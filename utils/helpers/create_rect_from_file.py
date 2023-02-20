@@ -4,7 +4,7 @@ Create a rectangular object for testing from a file
 import os 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
-from ActorRectangular import ActorRectangular
+from actor import Actor
 from .data_parser import features_description
 import random
 import time
@@ -48,7 +48,7 @@ def actor_creator(agent_type:int, choice:int,DATADIR,FILE):
     
     actor_state_dict_tf = __actor_state(parsed,agent_index)
 
-    actor = ActorRectangular(actor_state_dict_tf)
+    actor = Actor(actor_state_dict_tf)
     if choice == -1:
         return actor,choice
     return actor,choice

@@ -74,7 +74,9 @@ inter_actor_position_dict = {
 inter_actor_vel_dir_dict = {
 "0":"not related",
 "1":"same",
-"-1":"opposite"
+"2":"left",
+"3":"right",
+"4":"opposite"
 }
 
 light_state_dict = {

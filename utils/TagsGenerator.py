@@ -4,9 +4,9 @@ import numpy as np
 from collections import namedtuple
 from helpers.create_rect_from_file import get_agent_list,actor_creator
 from shapely.ops import unary_union
-from EnvironmentElements import EnvironmentElementsWaymo
-from LongActDetector import LongActDetector
-from LatActDetector import LatActDetector
+from environ_elements import EnvironmentElementsWaymo
+from long_act_detector import LongActDetector
+from lateral_act_detector import LatActDetector
 import traceback
 from logger.logger import *
 from parameters.tag_parameters import *
@@ -38,7 +38,7 @@ class TagsGenerator:
         actors_environment_element_relation = {} #[actor_type][actor_id][lane_type]
         actors_environment_element_intersection = {} #[actor_type][actor_id][lane_type][expanded/trajectory],value is a list of area of intersection
         actors_list = {} #[actor_type] 
-        AgentExtendedPolygons = namedtuple('AgentExtendedPolygons','type,key,etp,ebb,length,x,y,theta')
+        AgentExtendedPolygons = namedtuple('AgentExtendedPolygons','type,key,etp,ebb,length,x,y,theta,v_dir')
         agent_pp_state_list = []
         for actor_type in actor_dict:
             agent_type = actor_dict[actor_type]
@@ -76,8 +76,10 @@ class TagsGenerator:
                 x = agent_state.kinematics['x']
                 y = agent_state.kinematics['y']
                 theta = agent_state.kinematics['bbox_yaw']
+                v_dir = agent_state.kinematics['vel_yaw']
+                #TODO: uniunivariate_spline v_dir
 
-                agent_extended_polygons = AgentExtendedPolygons(actor_type,agent_key,etp,ebb,time_steps,x,y,theta)
+                agent_extended_polygons = AgentExtendedPolygons(actor_type,agent_key,etp,ebb,time_steps,x,y,theta,v_dir)
                 agent_pp_state_list.append(agent_extended_polygons)
                 ######### long activity detection ###########
                 long_act_detector = LongActDetector()
@@ -241,7 +243,7 @@ class TagsGenerator:
         return environment_element_waymo
     
     def __initialize_with_example(self,example,number):
-        initialized = [np.zeros_like(example) for _ in range(number)]
+        initialized = [np.zeros_like(example).tolist() for _ in range(number)]
         return initialized
 
     def __compute_intersection(self,lo_act,element_key1,actor_trajectory_polygon,actor_expanded_multipolygon,valid_start,valid_end,agent_environment_element_intersection:dict,element_key2=None):
@@ -270,7 +272,7 @@ class TagsGenerator:
 
         if type in dashed_road_line_key:
             return self.__compute_actor_road_lane_change(valid_start,valid_end,trajectory_ratio,lane_id,la_act)
-        actor_lane_relation = np.ones_like(expanded_ratio) * int(new_tag_dict["not relative"])
+        actor_lane_relation = np.ones_like(expanded_ratio) * float(new_tag_dict["not relative"])
         trajectory_ratio = np.array(trajectory_ratio)
         expanded_ratio = np.array(expanded_ratio)
 
@@ -280,7 +282,7 @@ class TagsGenerator:
             pass
         elif np.sum(trajectory_ratio) == 0 and np.sum(expanded_ratio) != 0:
             approaching = np.where(expanded_ratio>interesting_threshold)[0]
-            actor_lane_relation[approaching] = int(new_tag_dict["approaching"])
+            actor_lane_relation[approaching] = float(new_tag_dict["approaching"])
         else:
             # set the actual ratio greater than 1 to 1
             trajectory_ratio = np.where(trajectory_ratio>1,1,trajectory_ratio)
@@ -290,9 +292,9 @@ class TagsGenerator:
             staying = np.intersect1d(np.where(np.abs(trajectory_ratio_dot)<=interesting_threshold)[0]+1,relative_time)
             entering = np.intersect1d(np.where(trajectory_ratio_dot>interesting_threshold)[0]+1,relative_time)
             leaving = np.intersect1d(np.where(trajectory_ratio_dot<-interesting_threshold)[0]+1,relative_time)
-            actor_lane_relation[staying] = int(new_tag_dict["staying"])
-            actor_lane_relation[entering] = int(new_tag_dict["entering"])
-            actor_lane_relation[leaving] = int(new_tag_dict["leaving"])
+            actor_lane_relation[staying] = float(new_tag_dict["staying"])
+            actor_lane_relation[entering] = float(new_tag_dict["entering"])
+            actor_lane_relation[leaving] = float(new_tag_dict["leaving"])
             actor_lane_relation[0] = actor_lane_relation[1]
             actor_lane_relation[valid_start]=actor_lane_relation[valid_start+1]
             if np.sum(expanded_ratio) != 0:
@@ -300,10 +302,10 @@ class TagsGenerator:
                 not_relative = np.where(trajectory_ratio<=interesting_threshold)[0]
                 filtered_approaching = np.intersect1d(approaching,not_relative)
                 # expanded_ratio > 0 and actor_lane_relation == -1 ==>approaching
-                actor_lane_relation[filtered_approaching] = road_relation_dict["approaching"]
+                actor_lane_relation[filtered_approaching] = float(new_tag_dict["approaching"])
         # making sure the invalid is -5
-        actor_lane_relation[:int(valid_start)] = int(new_tag_dict["invalid"])
-        actor_lane_relation[int(valid_end)+1:] = int(new_tag_dict["invalid"])
+        actor_lane_relation[:int(valid_start)] = float(new_tag_dict["invalid"])
+        actor_lane_relation[int(valid_end)+1:] = float(new_tag_dict["invalid"])
         return actor_lane_relation.tolist()
 
     def __compute_actor_road_lane_change(self,valid_start,valid_end,trajectory_ratio,lane_id,la_act): 
@@ -313,7 +315,7 @@ class TagsGenerator:
         """
         new_tag_dict = dict([val,key] for key,val in road_relation_dict.items())
 
-        actor_road_lane_change = np.ones_like(trajectory_ratio) * int(new_tag_dict["no lane change"])
+        actor_road_lane_change = np.ones_like(trajectory_ratio) * float(new_tag_dict["no lane change"])
         trajectory_ratio = np.array(trajectory_ratio)
         none_zero_segments = np.split(np.where(trajectory_ratio!=0)[0],np.where(np.diff(np.nonzero(trajectory_ratio)[0])>1)[0]+1)
         abs_la_act = np.abs(la_act)
@@ -324,9 +326,9 @@ class TagsGenerator:
                     lane_id_segment = lane_id[key][segment[0]:segment[-1]+1]
                     abs_la_act_segment = abs_la_act[segment[0]:segment[-1]+1]
                     if len(np.where(np.diff(lane_id_segment)>0)[0]) and len(np.where(abs_la_act_segment==2)[0]):
-                        actor_road_lane_change[segment[0]:segment[-1]+1] = int(new_tag_dict["lane change"])
-        actor_road_lane_change[:int(valid_start)] = int(new_tag_dict["invalid"])
-        actor_road_lane_change[int(valid_end)+1:] = int(new_tag_dict["invalid"])
+                        actor_road_lane_change[segment[0]:segment[-1]+1] = float(new_tag_dict["lane changing"])
+        actor_road_lane_change[:int(valid_start)] = float(new_tag_dict["invalid"])
+        actor_road_lane_change[int(valid_end)+1:] = float(new_tag_dict["invalid"])
 
         return actor_road_lane_change.tolist()
 
@@ -352,8 +354,9 @@ class TagsGenerator:
                 # agent_type_2 = agent_pp_state_2.type
                 agent_etp_2 = agent_pp_state_2.etp
                 agent_ebb_2 = agent_pp_state_2.ebb
-                relation = np.ones(length) * int(new_tag_dict['not related'])
-                position = np.ones(length) * int(new_tag_dict['not related'])
+                relation = np.ones(length) * float(new_tag_dict['not related'])
+                position = np.ones(length) * float(new_tag_dict['not related'])
+                vel_dir = np.ones(length) * float(new_tag_dict['not related'])
                 for step in range(length):
                     if agent_etp_1[step][0].area == 0 or agent_etp_2[step][0].area == 0:
                         continue
@@ -366,12 +369,16 @@ class TagsGenerator:
                                 break
                         intersection_ebb = agent_ebb_1[step].intersection(agent_ebb_2[step]).area
                         if etp_flag and intersection_ebb:
-                            relation[step] = int(new_tag_dict['estimated collision and close proximity'])
+                            relation[step] = float(new_tag_dict['estimated collision and close proximity'])
                         elif etp_flag and not intersection_ebb:
-                            relation[step] = int(new_tag_dict['estimated collision'])
+                            relation[step] = float(new_tag_dict['estimated collision'])
                         elif not etp_flag and intersection_ebb:
-                            relation[step] = int(new_tag_dict['close proximity'])
+                            relation[step] = float(new_tag_dict['close proximity'])
                         position[step] = self.__compute_actor_position_relation(agent_pp_state_1,agent_pp_state_2,step)
+                        try:
+                            vel_dir[step] = self.__compute_inter_actor_v_dir(agent_pp_state_1,agent_pp_state_2,step)
+                        except:
+                            raise ValueError(f"Agent1: {agent_key_1}, Agent2: {agent_key_2}, Step: {step}.")
                         #compute the position relation
                 if np.sum(relation):
                     inter_actor_relation[agent_key_1][agent_key_2] = {}
@@ -402,6 +409,23 @@ class TagsGenerator:
         else:
             position_relation = new_tag_dict['back']    # back
         return position_relation
+
+    def __compute_inter_actor_v_dir(self,agent_pp_state_1,agent_pp_state_2,step):
+        """
+        compute the velocity direction relation between two agents
+        refer the parameters.tag_dict for the meaning of the relation 
+        """
+        new_tag_dict = dict([val,key] for key,val in inter_actor_vel_dir_dict.items())
+        v_relative_dir = np.array(agent_pp_state_2.v_dir[step]-agent_pp_state_1.v_dir[step])
+        if -0.25 * np.pi < v_relative_dir <= 0.25 * np.pi:
+            vel_dir_relation = new_tag_dict['same']
+        elif 0.25 * np.pi < v_relative_dir <= 0.75 * np.pi:
+            vel_dir_relation = new_tag_dict['left']
+        elif -0.75 * np.pi < v_relative_dir <= -0.25 * np.pi:
+            vel_dir_relation = new_tag_dict['right']
+        else:
+            vel_dir_relation = new_tag_dict['opposite']
+        return vel_dir_relation
     
 
 
