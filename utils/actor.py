@@ -68,17 +68,24 @@ class Actor(ABC):
             logger.warning(f"Valid data proportion too small. Valid/total={validity_proportion:.2f}<50%.")
         self.validity_ratio = validity_proportion 
 
-
         if interp:
             for key in self.kinematics:
                 self.kinematics[key] = self.__interpolation(self.kinematics[key],mask,valid)
-        if spline:
-            pass
-        if moving_average:
-            pass
-        else:
-            pass
+
         return f"{validity_proportion:.2f}"
+
+    @property
+    def long_v(self):
+        return self.long_v
+    @long_v.setter
+    def long_v(self,value):
+        self.long_v = value
+    @property
+    def yaw_rate(self):
+        return self.yaw_rate
+    @yaw_rate.setter
+    def yaw_rate(self,value):
+        self.yaw_rate = value
 
     def clean_abnormal_velocity(self,data,valid,t_s,max_acc:float=0.7):
         # return [time_steps,]
@@ -97,20 +104,23 @@ class Actor(ABC):
         """
         Univariate spline for the noisy data
         ---------------------------------
-        Output:[time_steps,]
+        Output:[time_steps,]:np.darray,#knots:int
         """
         temp = data.squeeze().copy()
-        if len(valid) <=k :
+        if not type(valid) is np.ndarray or valid.size <=k:
             return temp,0
+
         assert len(valid)==len(temp[valid]),f"x and y are in different length."
         univariate_spliner = UnivariateSpline(valid,temp[valid],k=k,s=smoothing_factor)
         time_x = np.arange(len(temp))
         result = univariate_spliner(time_x)
-        result = np.array(result,dtype=np.float32)
-        result[:valid[0]] = np.nan
-        result[valid[-1]+1:] = np.nan
+        valid_start,valid_end = int(valid[0]),int(valid[-1])
         knots = univariate_spliner.get_knots()
-        return tf.convert_to_tensor(result,dtype=tf.float32),knots
+        if isinstance(result,list):
+            result = np.array(result)
+        result[:valid_start] = np.nan
+        result[valid_end+1:] = np.nan
+        return result,knots
 
     def __simple_moving_average(self,data,mask,valid,kernel_length):
         filtered_data = np.convolve(data[valid[0]:valid[-1]+1],np.ones(kernel_length))\
@@ -132,7 +142,6 @@ class Actor(ABC):
         '''
         set the angle in (0,2*pi)
         '''
-
         return (angle+100*pi) % (2*pi)
 
     def __interpolation(self,data,mask,valid,VELOCITY:bool=False):
@@ -187,6 +196,15 @@ class Actor(ABC):
         return polygon_set
 
     def expanded_polygon_set(self,TTC:int=3,sampling_fq:int=10):
+        """
+        CTRV model: constant turn rate and velocity
+        Using CTRV to predict the future trajectory of the ego vehicle in a shorter time(<=3s)
+        """
+        # sanity check
+        if TTC > 3:
+            TTC = 3
+            raise ValueError("TTC should <= 3s. Got {TTC}s. Set to 3s.")
+
         self.expanded_multipolygon = []
         expanded_polygon_set = []
         x_ = self.kinematics['x'].numpy().squeeze()

@@ -8,8 +8,8 @@ import time
 import re
 import json
 import argparse
-from TagsGenerator import TagsGenerator
-from ScenarioMiner import ScenarioMiner
+from tags_generator import TagsGenerator
+from scenario_miner import ScenarioMiner
 from rich.progress import track
 from logger.logger import *
 import traceback

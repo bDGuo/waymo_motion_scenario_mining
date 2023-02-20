@@ -191,7 +191,7 @@ class EnvironmentElementsWaymo:
         self.__reducing_traffic_lights_dim()
     
     def __create_lane_polygon_set(self,roadgraph_type,roadgraph_xyz,roadgraph_lane_id,controlled_lanes_id):
-        # TODO:create the lane polygon list for each lane type
+        # create the lane polygon list for each lane type
         for key in self.lane_type:
             lane_mask = np.where(roadgraph_type[:,0]==self.lane_type[key])[0]
             lane_pts = roadgraph_xyz[lane_mask,:2]      # dim = [num_points,2]
@@ -210,7 +210,7 @@ class EnvironmentElementsWaymo:
         return 0
 
     def __create_other_object_polygon_set(self,roadgraph_type,roadgraph_xyz,roadgraph_lane_id):
-        # TODO:create the other object polygon list for each other object type
+        # create the other object polygon list for each other object type
         for key in self.other_object_type:
             other_object_mask = np.where(roadgraph_type[:,0]==self.other_object_type[key])[0]
             other_object_pts = roadgraph_xyz[other_object_mask,:2]      # dim = [num_points,2]

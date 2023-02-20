@@ -13,8 +13,13 @@ class Tag:
     inter_actor_relation_dict:dict
     inter_actor_position_dict:dict
     light_state_dict:dict
+    inter_actor_vel_dir_dict:dict
 
-    def set_lo_act(self,lo_act):
+    @property
+    def lo_act(self):
+        return self.lo_act
+    @lo_act.setter
+    def lo_act(self,lo_act):
         self.lo_act = lo_act
     def set_la_act(self,la_act):
         self.la_act = la_act
@@ -24,6 +29,8 @@ class Tag:
         self.inter_actor_relation = inter_actor_relation
     def set_inter_actor_position(self,inter_actor_position):
         self.inter_actor_position = inter_actor_position
+    def set_inter_actor_vel_dir(self,inter_actor_vel_dir):
+        self.inter_actor_vel_dir = inter_actor_vel_dir
     def set_light_state(self,light_state):
         self.light_state = light_state
 

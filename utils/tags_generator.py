@@ -242,7 +242,7 @@ class TagsGenerator:
         environment_element_waymo.create_polygon_set()
         return environment_element_waymo
     
-    def __initialize_with_example(self,example,number):
+    def __initialize_with_example(self,example,number)->list:
         initialized = [np.zeros_like(example).tolist() for _ in range(number)]
         return initialized
 
@@ -337,6 +337,7 @@ class TagsGenerator:
         generate the inter actor relation
         refer the parameters.tag_dict for the meaning of the relation 
         """
+        print(f"generating inter actor relation...")
         new_tag_dict = dict([val,key] for key,val in inter_actor_relation_dict.items())
         inter_actor_relation = {}
         for agent_pp_state_1 in agent_pp_state_list:
