@@ -200,11 +200,6 @@ class Actor(ABC):
         CTRV model: constant turn rate and velocity
         Using CTRV to predict the future trajectory of the ego vehicle in a shorter time(<=3s)
         """
-        # sanity check
-        if TTC > 3:
-            TTC = 3
-            raise ValueError("TTC should <= 3s. Got {TTC}s. Set to 3s.")
-
         self.expanded_multipolygon = []
         expanded_polygon_set = []
         x_ = self.kinematics['x'].numpy().squeeze()
@@ -224,7 +219,7 @@ class Actor(ABC):
             else:
                 expanded_polygon = []
                 expanded_all_polygon = []
-                for j in range(1,TTC*sampling_fq):
+                for j in range(1,int(TTC*sampling_fq)):
                     new_x_ = x_[i] + j/sampling_fq * vx_[i]
                     new_y_ = y_[i] + j/sampling_fq * vy_[i]
                     new_yaw_ = yaw_[i] + j/sampling_fq * vyaw_[i]
