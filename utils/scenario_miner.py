@@ -7,7 +7,7 @@ class ScenarioMiner:
     def __init__(self) -> None:
         pass
     def mining(self,tags_dict:dict)->dict:
-        actors_list = tags_dict['actors_list']
+        actors_list = tags_dict['general_info']['actors_list']
         inter_actor_relation = tags_dict['inter_actor_relation']
         actors_activity = tags_dict['actors_activity']
         actors_environment_element_intersection = tags_dict['actors_environment_element_intersection']
@@ -29,10 +29,10 @@ class ScenarioMiner:
                 valid_end = int(valid_end)
                 agent_lo_act = agent_activity['lo_act']
                 turning_points = self.__computing_turning_point(agent_lo_act,valid_start,valid_end)
-                solo_scenarios[actor_type][agent_key]['lo']=self.__summarizing_events(agent_lo_act,turning_points,valid_start,valid_end,'lo',lo_act_dict)        
+                solo_scenarios[actor_type][agent_key]['lo_act']=self.__summarizing_events(agent_lo_act,turning_points,valid_start,valid_end,'lo',lo_act_dict)        
                 agent_la_act = agent_activity['la_act']
                 turning_points = self.__computing_turning_point(agent_la_act,int(valid_start),int(valid_end))
-                solo_scenarios[actor_type][agent_key]['la']=self.__summarizing_events(agent_la_act,turning_points,valid_start,valid_end,'la',la_act_dict)
+                solo_scenarios[actor_type][agent_key]['la_act']=self.__summarizing_events(agent_la_act,turning_points,valid_start,valid_end,'la',la_act_dict)
                 ##### agent and environment element relation #####
                 agent_elements_relation = actors_environment_element_intersection[actor_type][agent_key]
                 solo_scenarios[actor_type][agent_key]['environment'] = {}
