@@ -5,35 +5,6 @@ Contains the meaning of the tags
 from collections import namedtuple
 from dataclasses import dataclass
 
-@dataclass
-class Tag:
-    lo_act_dict:dict
-    la_act_dict:dict
-    road_relation_dict:dict
-    inter_actor_relation_dict:dict
-    inter_actor_position_dict:dict
-    light_state_dict:dict
-    inter_actor_vel_dir_dict:dict
-
-    @property
-    def lo_act(self):
-        return self.lo_act
-    @lo_act.setter
-    def lo_act(self,lo_act):
-        self.lo_act = lo_act
-    def set_la_act(self,la_act):
-        self.la_act = la_act
-    def set_road_relation(self,road_relation):
-        self.road_relation = road_relation
-    def set_inter_actor_relation(self,inter_actor_relation):
-        self.inter_actor_relation = inter_actor_relation
-    def set_inter_actor_position(self,inter_actor_position):
-        self.inter_actor_position = inter_actor_position
-    def set_inter_actor_vel_dir(self,inter_actor_vel_dir):
-        self.inter_actor_vel_dir = inter_actor_vel_dir
-    def set_light_state(self,light_state):
-        self.light_state = light_state
-
 lo_act_dict = {
 "2":'standing still',
 "1":'accelerating',
@@ -68,7 +39,7 @@ inter_actor_relation_dict = {
 "0":"not related",
 "1":"estimated collision",
 "2":"close proximity",
-"3":"estimated collision and close proximity"
+"3":"estimated collision+close proximity"
 }
 inter_actor_position_dict = {
 "0":"not related",
@@ -97,4 +68,15 @@ light_state_dict = {
     "6":"Go",
     "7":"Flashing stop",
     "8":"Flashing caution"
+}
+
+
+TagDict={
+    'lo_act' : lo_act_dict,
+    'la_act' : la_act_dict,
+    'road_relation' : road_relation_dict,
+    'inter_actor_relation' : inter_actor_relation_dict,
+    'inter_actor_position' : inter_actor_position_dict,
+    'light_state' : light_state_dict,
+    'inter_actor_vel_dir' : inter_actor_vel_dir_dict,
 }
