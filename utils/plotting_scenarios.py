@@ -10,7 +10,7 @@ import os
 import numpy as np
 from helpers.os_helpers import *
 from helpers.diverse_plot import plot_road_lines,create_figure_and_axes
-from EnvironmentElements import EnvironmentElementsWaymo
+from environ_elements import EnvironmentElementsWaymo
 from helpers.create_rect_from_file import actor_creator
 from parameters.tags_dict import lo_act_dict,la_act_dict
 from parameters.plot_parameters import *
