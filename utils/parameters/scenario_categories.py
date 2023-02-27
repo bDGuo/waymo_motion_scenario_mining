@@ -12,10 +12,10 @@ class SCBasis:
     #####   general info    #####
     SC_ID : str = "SC_0"
     description = "This is the basis for all scenario categories."
-    source:str = "None"
-    source_file:str = "None"
+    source:str = ""
+    source_file:str = ""
     #####   host actor  #####
-    host_actor_type : list = ["None"]
+    host_actor_type =[]
     host_actor_tag : dict = {
     "lo_act" : [],
     "la_act" : [],
@@ -26,7 +26,7 @@ class SCBasis:
     'inter_actor_v_dir':[],
     }
     #####   guest actor  #####
-    guest_actor_type : list = ["None"]
+    guest_actor_type = []
     guest_actor_tag : dict = {
     "lo_act" : [],
     "la_act" : [],
@@ -54,6 +54,7 @@ class Car2CarFrontTurn(SCBasis):
     "lo_act" : ['accelearting','cruising','decelerating'], # forward
     'la_act' : ['turning left','turning right'],
     "road_relation" : [],
+    "road_type" : [],
     "inter_actor_relation" : ['estimated_collision',"estimated collision+close proximity"],
     "inter_actor_position" : ['left','right','front']    
     }
@@ -61,7 +62,11 @@ class Car2CarFrontTurn(SCBasis):
     guest_actor_type = ["vehicle"]
     guest_actor_tag = {
     "lo_act" : ['accelearting','cruising','decelerating'],
-    "la_act" : ['swerving left','swerving right','going straight']
+    "la_act" : ['swerving left','swerving right','going straight'],
+    "road_relation" : [],
+    "road_type" : [],
+    "inter_actor_relation" : [],
+    "inter_actor_position" : []
     }
 
 @dataclass
@@ -97,6 +102,7 @@ class Car2CarFollowing(SCBasis):
     "lo_act" : ['accelearting','cruising','decelerating'], # forward
     'la_act' : ['going straight'],
     "road_relation" : [],
+    "road_type" : [],
     "inter_actor_relation" : ['estimated_collision',"estimated collision+close proximity"],
     "inter_actor_position" : ['front']    
     }
@@ -104,12 +110,41 @@ class Car2CarFollowing(SCBasis):
     guest_actor_type = ["vehicle"]
     guest_actor_tag = {
     "lo_act" : ['accelearting','cruising','decelerating'],
-    "la_act" : ['going straight']
+    "la_act" : ['going straight'],
+    "road_relation" : [],
+    "road_type" : [],
+    "inter_actor_relation" : [],
+    "inter_actor_position" : []
     }
-    ...
+
+@dataclass
+class CarViolateTrafficLight(SCBasis):
+    #####   general info    #####
+    SC_ID = "SC11"
+    description = "Car violates traffic light"
+    source = ""
+    source_file = ""
+    #####   host actor  #####
+    host_actor_type = ["vehicle"]
+    host_actor_tag = {
+    "lo_act" : [],
+    'la_act' : [],
+    "road_relation" : ['staying','entering','leaving'],
+    "road_type" : ['controlled_lane'],
+    "inter_actor_relation" : [],
+    "inter_actor_position" : []
+    }
+    #####   guest actor  #####
+    # skip
+    #####    environment  #####
+    envr_tag = {
+        'light_state': ['Arrow stop','Stop','Flashing stop']
+    }
 
 ScenarioCatelog={
     "SC1":Car2CarFrontTurn,
     "SC5":Car2BycFrontTurn,
-    "SC8":Car2PedFrontTurn
+    "SC8":Car2PedFrontTurn,
+    "SC4":Car2CarFollowing,
+    "SC11":CarViolateTrafficLight
 }
