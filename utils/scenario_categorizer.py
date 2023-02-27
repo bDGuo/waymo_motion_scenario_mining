@@ -26,27 +26,33 @@ class ScenarioCategorizer:
         """
         SC = self.scenario_catelog[scenario_category_ID]
         SC_result = {}
+        SC_count = 0
         for host_actor_type in SC.host_actor_type:
             for host_actor_id in self.actors_list[host_actor_type]:
-                #####   encode host lo_act    #####
-                flag_lo,lo_tag_encoded_h = self._tag_encoder(SC,self.actors_activity[host_actor_type][f'{host_actor_type}_{host_actor_id}_activity']['lo_act'],'lo_act')
-                #####   encode host la_act    #####
-                flag_la,la_tag_encoded_h = self._tag_encoder(SC,self.actors_activity[host_actor_type][f'{host_actor_type}_{host_actor_id}_activity']['la_act'],'la_act')
-                time_stamp = lo_tag_encoded_h * la_tag_encoded_h
+                time_stamp = self._check_actor_activity(SC,host_actor_type,host_actor_id,host=True)
+                #####   encode host environment relation   #####
+                time_stamp *= self._check_actor_envr_relation(SC,host_actor_type,host_actor_id,time_stamp)
                 #  early jump to the next host actor
                 if not np.any(np.where(time_stamp==1)[0]):
                     continue
-                #####   encode host road_relation   #####
-                # TODO: No need for SC1,SC5,SC8
+                if not len(SC.guest_actor_type):
+                #####   result #####
+                    SC_count += 1
+                    SC_result[SC_count] = {
+                        'SC_ID':scenario_category_ID,
+                        'host_actor':host_actor_id,
+                        'guest_actor':"None",
+                        'envr_type':SC.host_actor_tag['road_type'] if len(SC.host_actor_tag['road_type']) else "None",
+                        'time_stamp':time_stamp.tolist()
+                    }
+                    continue
                 #####   check guest actor   #####
                 for guest_actor in self.inter_actor_relation[f'{host_actor_type}_{host_actor_id}'].keys():
                     #####   encode inter_actor_relation and position  #####                    
-                    flag_relation,relation_tag_encoded_h = self._tag_encoder(SC,
-                                                                            self.inter_actor_relation[f'{host_actor_type}_{host_actor_id}'][guest_actor]['relation']
-                                                                            ,'inter_actor_relation')
-                    # TODO: position is different. For now, it is just left,right, and front.
-                    # should be left or right, then front.
-                    flag_position,position_tag_encoded_h = self._tag_encoder(SC,
+                    relation_tag_encoded_h = self._tag_encoder(SC,\
+                                                               self.inter_actor_relation[f'{host_actor_type}_{host_actor_id}'][guest_actor]['relation']\
+                                                                ,'inter_actor_relation')
+                    position_tag_encoded_h = self._tag_encoder(SC,
                                                                             self.inter_actor_relation[f'{host_actor_type}_{host_actor_id}'][guest_actor]['position']
                                                                             ,'inter_actor_position')
                     time_stamp *= relation_tag_encoded_h * position_tag_encoded_h
@@ -56,26 +62,59 @@ class ScenarioCategorizer:
                     #####    guest_actor   #####
                     guest_actor_type,guest_actor_id = guest_actor.split('_')
                     #####   check guest_actor type    #####
-                    if not guest_actor_type in SC.guest_actor['actor_type']:
+                    if not guest_actor_type in SC.guest_actor_type:
                         continue
                     #####   encode guest_actor lo_act    #####
-                    flag_lo,lo_tag_encoded_g = self._tag_encoder(SC,self.actors_activity[guest_actor_type][f'{guest_actor}_activity']['lo_act'],'lo_act',host=False)
+                    lo_tag_encoded_g = self._tag_encoder(SC,self.actors_activity[guest_actor_type][f'{guest_actor}_activity']['lo_act'],'lo_act',host=False)
                     #####   encode guest_actor la_act    #####
-                    flag_la,la_tag_encoded_g = self._tag_encoder(SC,self.actors_activity[guest_actor_type][f'{guest_actor}_activity']['la_act'],'la_act',host=False)
+                    la_tag_encoded_g = self._tag_encoder(SC,self.actors_activity[guest_actor_type][f'{guest_actor}_activity']['la_act'],'la_act',host=False)
                     time_stamp *= lo_tag_encoded_g * la_tag_encoded_g
                     #  early jump to the next guest actor
                     if not np.any(np.where(time_stamp==1)[0]):
                         continue
                     #####   encode guest_actor road_relation #####
-                    # TODO: No need for SC1
+                    # TODO: Currently not needed by SC1, SC11
                     #####   result #####
-                    SC_result = {
+                    SC_count += 1
+                    SC_result[SC_count] = {
                         'SC_ID':scenario_category_ID,
                         'host_actor':host_actor_id,
                         'guest_actor':guest_actor_id,
+                        'envr_type':SC.host_actor_tag['road_type'] if len(SC.host_actor_tag['road_type']) else "None",
                         'time_stamp':time_stamp.tolist()
                     }
+
         return SC_result
+
+    def _check_actor_envr_relation(self,SC,actor_type:str,actor_id:str,time_stamp,host:bool=True):
+        #####   encode host environment relation   #####
+        actor_constraint = SC.host_actor_tag if host else SC.guest_actor_tag
+        if not len(actor_constraint['road_type']):
+            return time_stamp
+        temp_time_stamp = np.zeros_like(time_stamp)
+        for road_type in actor_constraint['road_type']:
+            if self.actors_environment_element_intersection[actor_type][f'{actor_type}_{actor_id}'].get(road_type) is None:
+                continue
+            elif road_type == 'controlled_lane':
+                temp_time_stamp += self._check_actor_light_relation(SC,actor_type,actor_id,road_type,host=host)
+            else:
+                temp_time_stamp += self._tag_encoder(SC,self.actors_environment_element_intersection[actor_type][f'{actor_type}_{actor_id}'][road_type]['relation'],'road_relation',host=host)
+        return np.where(temp_time_stamp>0,1,0)
+    
+    def _check_actor_light_relation(self,SC,actor_type:str,actor_id:str,envr_type:str,host:bool=True):
+        # encoding relation of actor and controlled lane
+        relation = self._tag_encoder(SC,self.actors_environment_element_intersection[actor_type][f'{actor_type}_{actor_id}']['controlled_lane']['relation'],'road_relation',host=host)
+        # encoding light state of the controlled lane
+        light_state = self._tag_encoder(SC,self.actors_environment_element_intersection[actor_type][f'{actor_type}_{actor_id}']['controlled_lane']['light_state'],'light_state',host=host)
+        return relation * light_state
+    
+    def _check_actor_activity(self,SC,actor_type:str,actor_id:str,host:bool=True):
+        #####   encode inter_actor_relation and position  #####                    
+        #####   encode host lo_act    #####
+        lo_tag_encoded_h = self._tag_encoder(SC,self.actors_activity[actor_type][f'{actor_type}_{actor_id}_activity']['lo_act'],'lo_act',host=host)
+        #####   encode host la_act    #####
+        la_tag_encoded_h = self._tag_encoder(SC,self.actors_activity[actor_type][f'{actor_type}_{actor_id}_activity']['la_act'],'la_act',host=host)
+        return lo_tag_encoded_h * la_tag_encoded_h 
     
     def _tag_encoder(self,SC,encoding_tag:List,tag_type:str,host:bool=True):
         """
@@ -88,13 +127,18 @@ class ScenarioCategorizer:
         Input:
         SC : scenario category(type: class) for the SC_ID
         encoding_tag : the tag to be encoded (type: list) from the result_dict
-        tag_type : the tag type required in the scenario category
+        tag_type : the tag type required in the scenario category, described in the keys of the attribute dict in scenario_categories.py
         host: whether the actor is host or guest
         ----------------
         Output: (flag, encoded tag)
         """
         actor_constraint = SC.host_actor_tag if host else SC.guest_actor_tag
-        tag = actor_constraint[tag_type]
+        if not tag_type in actor_constraint.keys():
+            tag = SC.envr_tag[tag_type]
+        else:
+            tag = actor_constraint[tag_type]
+        if not len(tag):
+            return np.ones_like(encoding_tag)
         value = [float(k) for (k,v) in TagDict[tag_type].items() if v in tag]
         tag_array = np.array(encoding_tag)
         value_array = np.array(value)
@@ -102,9 +146,8 @@ class ScenarioCategorizer:
         encoding_index = np.array([])
         for v in value_array:
             encoding_index = np.append(encoding_index,np.where(tag_array==v)[0]).astype(int)
-        flag = np.any(encoding_index)
         encoded_tag[encoding_index] = 1
-        return flag, encoded_tag
+        return encoded_tag
     
     def _tag_segmentation(self,tag:list,value:list):
         """
