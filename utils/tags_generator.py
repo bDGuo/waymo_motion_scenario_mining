@@ -32,7 +32,9 @@ class TagsGenerator:
         tagging the actors in the scene
         """
         environment_element = self.generate_lane_polygons(DATADIR,FILE)
-        other_object_key = ['cross_walk','speed_bump']
+
+        agent_state_dict = {key:{} for key in actor_dict.keys()}
+        agent_pp_state_list = []
         controlled_lane = environment_element.get_controlled_lane()
         actors_activity={} # [actor_type][actor_id][validity/lo_act/la_act]
         actors_environment_element_relation = {} #[actor_type][actor_id][lane_type]
@@ -150,7 +152,6 @@ class TagsGenerator:
                         'expanded_ratio':expanded_ratio,
                         'trajectory':traj,
                         'trajectory_ratio':traj_ratio,
-                        'current_controlled_lane':current_controlled_lane,
                         'current_lane_id':current_lane_id
                     }
                 # compute intersection with other types of objects
@@ -182,6 +183,8 @@ class TagsGenerator:
                         'trajectory_ratio':traj_ratio
                     }
                 # compute intersection with controlled lanes
+                
+                agent_controlled_lane = {}
                 controlled_lanes = environment_element.get_controlled_lane()
                 controlled_lanes_id = environment_element.controlled_lane_id
                 traffic_lights_state = environment_element.traffic_lights['traffic_lights_state']
@@ -217,7 +220,7 @@ class TagsGenerator:
                                 break
                         light_state = traffic_lights_state[:,light_index].tolist()
                         controlled_lane_key = f"controlled_lane_{controlled_lane_id}"
-                        agent_environment_element_intersection[controlled_lane_key]={
+                        agent_controlled_lane[controlled_lane_key]={
                             'relation':actor_lane_relation,
                             'light_state':light_state,
                             'expanded':expanded,
@@ -225,6 +228,18 @@ class TagsGenerator:
                             'trajectory':traj,
                             'trajectory_ratio':traj_ratio
                         }
+                # TODO: fix the current controlled lane with approaching
+                ctrl_lane_id = self.__generate_agent_ctrl_lane_relation(agent_controlled_lane)
+                if "_" in ctrl_lane_id or ctrl_lane_id != 'None':
+                    agent_environment_element_intersection["controlled_lane"] = {
+                        "lane_id" : ctrl_lane_id.split("_")[-1],
+                        "relation" : agent_controlled_lane[ctrl_lane_id]['relation'],
+                        "light_state" : agent_controlled_lane[ctrl_lane_id]['light_state'],
+                        "expanded" : agent_controlled_lane[ctrl_lane_id]['expanded'],
+                        "expanded_ratio" : agent_controlled_lane[ctrl_lane_id]['expanded_ratio'],
+                        "trajectory" : agent_controlled_lane[ctrl_lane_id]['trajectory'],
+                        "trajectory_ratio" : agent_controlled_lane[ctrl_lane_id]['trajectory_ratio']
+                    }
                 actor_environment_element_intersection[agent_key] = agent_environment_element_intersection
                 road_graph_plot_flag=0
             if isinstance(agent_list_2,list):    
@@ -235,7 +250,25 @@ class TagsGenerator:
             actors_environment_element_intersection[actor_type] = actor_environment_element_intersection
         ########### inter actor relation ###########
         inter_actor_relation = self.__generate_inter_actor_relation(agent_pp_state_list)
-        return actors_list,inter_actor_relation,actors_activity,actors_environment_element_intersection
+        ########### general info ###########
+        general_info = {
+            'actors_list': actors_list,
+            'tagging_parameters': tags_param,
+        }
+        return general_info,inter_actor_relation,actors_activity,actors_environment_element_intersection
+    
+    def __generate_agent_ctrl_lane_relation(self,agent_controlled_lane:dict)->str:
+        """
+        input: traj_ratio,expanded_ratio
+        output: dict:{relation with one ctrl. lane, light_state}
+        """
+        ctrl_lane_id,traj_r = 'None',0
+        for key in agent_controlled_lane.keys():
+            temp_traj_r = np.sum(np.array(agent_controlled_lane[key]['trajectory_ratio'],dtype=np.float16))
+            if temp_traj_r>traj_r:
+                ctrl_lane_id = key
+                traj_r = temp_traj_r
+        return ctrl_lane_id
 
     def generate_lane_polygons(self,DATADIR:str,FILE:str):
         environment_element_waymo = EnvironmentElementsWaymo(DATADIR,FILE)
@@ -370,7 +403,7 @@ class TagsGenerator:
                                 break
                         intersection_ebb = agent_ebb_1[step].intersection(agent_ebb_2[step]).area
                         if etp_flag and intersection_ebb:
-                            relation[step] = float(new_tag_dict['estimated collision and close proximity'])
+                            relation[step] = float(new_tag_dict['estimated collision+close proximity'])
                         elif etp_flag and not intersection_ebb:
                             relation[step] = float(new_tag_dict['estimated collision'])
                         elif not etp_flag and intersection_ebb:
@@ -385,6 +418,7 @@ class TagsGenerator:
                     inter_actor_relation[agent_key_1][agent_key_2] = {}
                     inter_actor_relation[agent_key_1][agent_key_2]['relation'] = relation.tolist()
                     inter_actor_relation[agent_key_1][agent_key_2]['position'] = position.tolist()
+                    inter_actor_relation[agent_key_1][agent_key_2]['v_dir'] = vel_dir.tolist()
 
         return inter_actor_relation
 
