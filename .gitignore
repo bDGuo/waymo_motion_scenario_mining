@@ -13,7 +13,7 @@ log/
 deprecated/
 @Automation*
 *.bat
-
+result_tag*
 
 
 
