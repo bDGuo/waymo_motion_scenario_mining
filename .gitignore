@@ -2,20 +2,19 @@
 #ignore the helpers from waymo tutorial
 /tutorial
 /waymo_open_dataset
-# try.ipynb
 try*
 __pycache__
 /results
 /figures
-notes/
+/fig_graduation
+/notes
 /.vscode
 log/
 deprecated/
 @Automation*
 *.bat
 result_tag*
-/paper_doc/
-
+/.idea
 
 
 
