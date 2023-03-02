@@ -2,8 +2,6 @@
 Called by runner.py
 Contains the meaning of the tags
 """
-from collections import namedtuple
-from dataclasses import dataclass
 
 lo_act_dict = {
 "2":'standing still',
@@ -57,6 +55,12 @@ inter_actor_vel_dir_dict = {
 "4":"opposite"
 }
 
+inter_actor_lane_id_dict = {
+"0":"not related",
+"1":"same",
+"2":"different"
+}
+
 light_state_dict = {
     "-1":"Invalid",
     "0":"Unknown",
@@ -77,6 +81,7 @@ TagDict={
     'road_relation' : road_relation_dict,
     'inter_actor_relation' : inter_actor_relation_dict,
     'inter_actor_position' : inter_actor_position_dict,
+    'inter_actor_lane_id' : inter_actor_lane_id_dict,
     'light_state' : light_state_dict,
     'inter_actor_vel_dir' : inter_actor_vel_dir_dict,
 }

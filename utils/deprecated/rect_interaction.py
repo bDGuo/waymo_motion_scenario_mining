@@ -1,18 +1,12 @@
-import tensorflow as tf
 from abc import ABC
-from cmath import nan
 import tensorflow as tf
-from scipy.interpolate import UnivariateSpline
-import numpy as np
-import pandas as pd
-from math import pi
 
 
 # This class is deprecated. We will use shapely to compute the area of intersection. 
 class rect_interaction(ABC):
     def __init__(self,rect1, rect2):
         '''
-        cx,cy: cordinates of center
+        cx,cy: coordinates of center
         '''
         self.r1={'cx':rect1.kinematics['x'],'cy':rect1.kinematics['y'],
                 'l':rect1.kinematics['length'], 'w': rect1.kinematics['width'],
@@ -31,12 +25,12 @@ class rect_interaction(ABC):
 
     def rect_relation(self,ttc=3,sampling_fq=2):
         '''
-        two intersected rectangulars             --->    1
+        two intersected rectangular             --->    1
         ttc: time-to-collision in seconds, default=3s, with 2 Hz sampling frequency
         else                                     --->    0
         ----------------------------------------------------------------------------
         '''
-        # Augmenting center cordinates and heading angle with last sampled v_x, v_y and v_yaw
+        # Augmenting center coordinates and heading angle with last sampled v_x, v_y and v_yaw
         if ttc * sampling_fq == 0:
             
             r1 = self.r1
@@ -78,12 +72,12 @@ class rect_interaction(ABC):
         return r1, r2
 
     def rect_intersection(self,r1,r2,ind=0) -> bool:
-        '''
+        """
         if anyone of the four vertices of r2 fall in r1, they are intersected
-        c1...c4x(y) are the cordinates of four vertices
-        TODO:crossing test https://blog.csdn.net/s0rose/article/details/78831570
-        ''' 
-        # rotate r1 and r2 cordinate with heading angle of r1
+        c1...c4x(y) are the coordinates of four vertices
+        crossing test https://blog.csdn.net/s0rose/article/details/78831570
+        """
+        # rotate r1 and r2 coordinate with heading angle of r1
         (r1_cx, r1_cy) = self.cordinate_rotate(r1['cx'],r1['cy'],r1['theta'])
         (r2_cx, r2_cy) = self.cordinate_rotate(r2['cx'],r2['cy'],r1['theta'])
         r2_theta = r2['theta'] - r1['theta']
@@ -123,7 +117,7 @@ class rect_interaction(ABC):
 
     def cordinate_rotate(self,x,y,theta):
         '''
-        rotate the cordinate system with r1's heading angle as x_ axis
+        rotate the coordinate system with r1's heading angle as x_ axis
 
         x' = cos (theta) * x + sin (theta) * y
         y' = -sin(theta) * x + cos (theta) * y
