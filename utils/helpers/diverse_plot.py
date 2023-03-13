@@ -117,7 +117,7 @@ def plot_road_lines(ax,original_data_roadgragh:dict,original_data_light:dict,roa
     'freeway':1,
     'surface_street':2,
     'bike_lane':3
-}
+    }
     # road edges
     roadedge_mask = np.where((roadgraph_type[:,0]==15) | (roadgraph_type[:,0]==16))[0]
     roadedge_pts = roadgraph_xyz[roadedge_mask,:2].T

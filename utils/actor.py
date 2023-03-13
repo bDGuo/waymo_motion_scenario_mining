@@ -12,11 +12,10 @@ from logger.logger import *
 
 
 class Actor(ABC):
-
     def __init__(self, state: dict):
         self.id = state['id']
         self.type = state['type']
-        # [num_object:1,num_timestep:91]
+        # [num_object:1,num_timestep:91] np.array
         self.kinematics = {
             'x': state['x'],
             'y': state['y'],
@@ -34,8 +33,19 @@ class Actor(ABC):
         self.expanded_polygon = []
         self.expanded_bboxes = []
 
-    def cordinate_rotate(self, x, y, theta):
+    def ts_to_np(self):
+        """
+        convert input tensor to numpy
+        """
+        for key in self.kinematics:
+            self.kinematics[key] = self.kinematics[key].numpy().squeeze()
+        self.validity = self.validity.numpy().squeeze()
+        self.id = self.id.numpy().squeeze()
+        self.type = self.type.numpy().squeeze()
+
+    def cordinate_rotate_ts(self, x, y, theta):
         '''
+        tensor version of cordinate_rotate
         rotate the cordinate system with r1's heading angle as x_ axis
 
         x' = cos (theta) * x + sin (theta) * y
@@ -44,14 +54,29 @@ class Actor(ABC):
         x_ = tf.cos(tf.cast(theta, tf.float32)) * x + tf.sin(tf.cast(theta, tf.float32)) * y
         y_ = tf.sin(tf.cast(theta, tf.float32)) * (-x) + tf.cos(tf.cast(theta, tf.float32)) * y
         return x_, y_
+    
+    def cordinate_rotate(self,x,y,theta):
+        '''
+        numpy version of cordinate_rotate
+        rotate the cordinate system with r1's heading angle as x_ axis
+        formula:
+        x' = cos (theta) * x + sin (theta) * y
+        y' = -sin(theta) * x + cos (theta) * y
+        '''
+        x_ = np.cos(theta) * x + np.sin(theta) * y
+        y_ = np.sin(theta) * (-x) + np.cos(theta) * y
+        return x_, y_
 
-    def data_preprocessing(self, interp: bool = True, spline: bool = False, moving_average: bool = False):
+    def data_preprocessing(self, interp: bool = True,input_type='np'):
         """
-        interpolating the invalid data
+        1. transform the data to numpy
+        2. interpolate the invalid data
         return validity/appearance
         """
-        mask = np.where(self.validity.numpy().squeeze() != 1)[0]  # [91,]
-        valid = np.where(self.validity.numpy().squeeze() == 1)[0]  # [91,]
+        if input_type == 'tensor':
+            self.ts_to_np()
+        mask = np.where(self.validity!= 1)[0]  # [num_time_steps,]
+        valid = np.where(self.validity== 1)[0]  # [num_time_steps,]
         valid_length = len(valid)
         appearance_start = valid[0]
         appearance_end = valid[-1]
@@ -100,44 +125,10 @@ class Actor(ABC):
         return data
 
     # this method is moved to data_preprocessing.py as a seperate function
-    # A tensor version of splining
     def __univariate_spline(self, data, valid, k=3, smoothing_factor=None):
-        """
-        Univariate spline for the noisy data
-        ---------------------------------
-        Output:[time_steps,]:np.darray,#knots:int
-        """
-        temp = data.squeeze().copy()
-        if not type(valid) is np.ndarray or valid.size <= k:
-            return temp, 0
-
-        assert len(valid) == len(temp[valid]), f"x and y are in different length."
-        univariate_spliner = UnivariateSpline(valid, temp[valid], k=k, s=smoothing_factor)
-        time_x = np.arange(len(temp))
-        result = univariate_spliner(time_x)
-        valid_start, valid_end = int(valid[0]), int(valid[-1])
-        knots = univariate_spliner.get_knots()
-        if isinstance(result, list):
-            result = np.array(result)
-        result[:valid_start] = np.nan
-        result[valid_end + 1:] = np.nan
-        return result, knots
-
+        ...
     def __simple_moving_average(self, data, mask, valid, kernel_length):
-        filtered_data = np.convolve(data[valid[0]:valid[-1] + 1], np.ones(kernel_length)) \
-                            [:(valid[-1] - valid[0] + 1)] / kernel_length
-        # bias correction
-        sum_start = 0
-        sum_end = 0
-        for i in range(kernel_length - 1):
-            sum_start += filtered_data[i]
-            filtered_data[i] = sum_start / (i + 1)
-            sum_end += filtered_data[-i]
-            filtered_data[-i] = sum_end / (i + 1)
-        data[valid[0]:valid[-1] + 1] = filtered_data.copy()
-        data[0, :valid[0]] = np.nan
-        data[0, valid[-1] + 1:] = np.nan
-        return tf.convert_to_tensor(data, dtype=tf.float32)
+        ...
 
     def __project_angel(self, angle):
         '''
@@ -146,15 +137,14 @@ class Actor(ABC):
         return (angle + 100 * pi) % (2 * pi)
 
     def __interpolation(self, data, mask, valid, VELOCITY: bool = False):
-        result = data.numpy().astype(np.float32)
-        result = result.squeeze()
+        result = data.astype(np.float32).squeeze()
         result[mask] = np.nan
         temp_pd = pd.DataFrame(result[valid[0]:valid[-1] + 1]).interpolate()
         # by default [np.nan,np.nan,1,np.nan,3,np.nan]-> 
         # [np.nan,np.nan,1,2,3,3]
         temp = temp_pd.values.T.squeeze() if temp_pd is not None else -1
         result[valid[0]:valid[-1] + 1] = temp
-        return tf.convert_to_tensor(result, dtype=tf.float32)
+        return result.astype(np.float32)
 
     def __instant_polygon(self, x: float, y: float, yaw_angle: float, length: float, width: float):
         """
@@ -176,7 +166,7 @@ class Actor(ABC):
         return Polygon(polygon_coordinates)
 
     def get_validity_range(self):
-        valid = np.where(self.validity.numpy().squeeze() == 1)[0]  # [91,]
+        valid = np.where(self.validity == 1)[0] # [time_steps,]
         return valid[0], valid[-1]
 
     def polygon_set(self):
@@ -184,11 +174,11 @@ class Actor(ABC):
         return a set of polygon at every time step
         """
         polygon_set = []
-        x_ = self.kinematics['x'].numpy().squeeze()
-        y_ = self.kinematics['y'].numpy().squeeze()
-        yaw_ = self.kinematics['bbox_yaw'].numpy().squeeze()
-        length_ = self.kinematics['length'].numpy().squeeze()
-        width_ = self.kinematics['width'].numpy().squeeze()
+        x_ = self.kinematics['x']
+        y_ = self.kinematics['y']
+        yaw_ = self.kinematics['bbox_yaw']
+        length_ = self.kinematics['length']
+        width_ = self.kinematics['width']
         mask_ = np.where(np.isnan(x_))[0]
         for i in range(len(x_)):
             # invalid time step is set to polygon with 0 area
@@ -198,21 +188,20 @@ class Actor(ABC):
                 polygon_set.append(self.__instant_polygon(x_[i], y_[i], yaw_[i], length_[i], width_[i]))
         return polygon_set
 
-    def expanded_polygon_set(self, TTC: int = 3, sampling_fq: int = 10):
+    def expanded_polygon_set(self, TTC: int, sampling_fq: int):
         """
         CTRV model: constant turn rate and velocity
         Using CTRV to predict the future trajectory of the ego vehicle in a shorter time(<=3s)
         """
         self.expanded_multipolygon = []
         expanded_polygon_set = []
-        x_ = self.kinematics['x'].numpy().squeeze()
-        y_ = self.kinematics['y'].numpy().squeeze()
-        yaw_ = self.kinematics['bbox_yaw'].numpy().squeeze()
-        length_ = self.kinematics['length'].numpy().squeeze()
-        width_ = self.kinematics['width'].numpy().squeeze()
-        vx_ = self.kinematics['velocity_x'].numpy().squeeze()
-        vy_ = self.kinematics['velocity_y'].numpy().squeeze()
-        vyaw_ = self.kinematics['vel_yaw'].numpy().squeeze()
+        x_ = self.kinematics['x']
+        y_ = self.kinematics['y']
+        yaw_ = self.kinematics['bbox_yaw']
+        length_ = self.kinematics['length']
+        width_ = self.kinematics['width']
+        vx_ = self.kinematics['velocity_x']
+        vy_ = self.kinematics['velocity_y']
         mask_ = np.where(np.isnan(x_))[0]
         for i in range(len(x_)):
             # invalid time step is set to polygon with 0 area
@@ -225,8 +214,7 @@ class Actor(ABC):
                 for j in range(1, int(TTC * sampling_fq)):
                     new_x_ = x_[i] + j / sampling_fq * vx_[i]
                     new_y_ = y_[i] + j / sampling_fq * vy_[i]
-                    new_yaw_ = yaw_[i] + j / sampling_fq * vyaw_[i]
-                    expanded_polygon.append(self.__instant_polygon(new_x_, new_y_, new_yaw_, length_[i], width_[i]))
+                    expanded_polygon.append(self.__instant_polygon(new_x_, new_y_, yaw_[i], length_[i], width_[i]))
                     expanded_all_polygon.append(expanded_polygon[j - 1])
                 # expanded_polygon_set.append(MultiPolygon(expanded_polygon))
                 expanded_polygon_set.append(unary_union(expanded_polygon).buffer(0.01))
@@ -235,11 +223,11 @@ class Actor(ABC):
 
     def expanded_bbox_list(self, expand: float = 2.0):
         expanded_bbox_list = []
-        x_ = self.kinematics['x'].numpy().squeeze()
-        y_ = self.kinematics['y'].numpy().squeeze()
-        yaw_ = self.kinematics['bbox_yaw'].numpy().squeeze()
-        length_ = self.kinematics['length'].numpy().squeeze()
-        width_ = self.kinematics['width'].numpy().squeeze()
+        x_ = self.kinematics['x']
+        y_ = self.kinematics['y']
+        yaw_ = self.kinematics['bbox_yaw']
+        length_ = self.kinematics['length']
+        width_ = self.kinematics['width']
         mask_ = np.where(np.isnan(x_))[0]
         for i in range(len(x_)):
             # invalid time step is set to polygon with 0 area

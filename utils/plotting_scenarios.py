@@ -11,43 +11,45 @@ import numpy as np
 from helpers.os_helpers import *
 from helpers.diverse_plot import plot_road_lines,create_figure_and_axes
 from environ_elements import EnvironmentElementsWaymo
-from helpers.create_rect_from_file import actor_creator
+from helpers.create_rect_from_file import get_agent_list, actor_creator, get_parsed_data, get_parsed_carla_data
 from parameters.tags_dict import lo_act_dict,la_act_dict
 from parameters.plot_parameters import *
+from parameters.tag_parameters import *
 
 
-def plot_all_scenarios(DATADIR,FILE,FILENUM,RESULT_DIR,RESULT_FILENAME,RESULT_SOLO,FIGUREDIR):
+def plot_all_scenarios(DATADIR,FILE,FILENUM,RESULT_DIR,RESULT_FILENAME,RESULT_SOLO,FIGUREDIR,eval_mode=False):
     FIG_PATH = FIGUREDIR / FILENUM
     if not FIG_PATH.exists():
         FIG_PATH.mkdir()
     result = json.load(open(RESULT_DIR / RESULT_FILENAME,'r'))
     solo_scenarios = json.load(open(RESULT_DIR/RESULT_SOLO,'r'))
-    actors_list = result['actors_list']
+    actors_list = result['general_info']['actors_list']
     inter_actor_relation = result['inter_actor_relation']
     actors_activity = result['actors_activity']
-    environment_element = EnvironmentElementsWaymo(DATADIR,FILE)
-    original_data_roadgragh,original_data_light = environment_element.road_graph_parser()
-    environment_element.create_polygon_set(parsing_mode=False)
+    if eval_mode:
+        parsed = get_parsed_carla_data(DATADIR/FILE)
+    else:
+        parsed = get_parsed_data(DATADIR/FILE)
+    environment_element = EnvironmentElementsWaymo(parsed)
+    original_data_roadgragh,original_data_light = environment_element.road_graph_parser(eval_mode=eval_mode)
+    environment_element.create_polygon_set(eval_mode=eval_mode)
     for actor_type,agents in actors_list.items():
         if isinstance(agents,int):
             agents = [agents]
         for agent in agents:
-            ##################################
-            # if agent not in [0,106,5,19,32,44]:
-            #     continue
-            ##################################
             agent_activity = actors_activity[actor_type][f"{actor_type}_{agent}_activity"]
             agent_interalation = inter_actor_relation[f"{actor_type}_{agent}"]
             AGENT_FIG_PATH = FIG_PATH / f"{actor_type}_{agent}"
-            agent_state,_ = actor_creator(actor_type,agent,DATADIR,FILE)
-            validity_proportion = agent_state.data_preprocessing()
+            if not AGENT_FIG_PATH.exists():
+                AGENT_FIG_PATH.mkdir()
+            agent_state,_ = actor_creator(actor_type,agent,parsed,eval_mode=eval_mode)
+            val_proportion = agent_state.data_preprocessing()
             solo_scenario = solo_scenarios[actor_type][f"{actor_type}_{agent}"]
-            _=plot_solo_scenario(f"{actor_type}_{agent}",agent_activity,agent_interalation,agent_state,DATADIR,FILE,solo_scenario,AGENT_FIG_PATH,\
-                environment_element,original_data_roadgragh,original_data_light)
-    
+            _=plot_solo_scenario(f"{actor_type}_{agent}",agent_activity,agent_interalation,agent_state,parsed,solo_scenario,AGENT_FIG_PATH,\
+                environment_element,original_data_roadgragh,original_data_light,eval_mode=eval_mode)
     return 0
 
-def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATADIR,FILE,solo_scenario,AGENT_FIG_PATH,s_e,o_d_r,o_d_l):
+def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,parsed,solo_scenario,AGENT_FIG_PATH,s_e,o_d_r,o_d_l,eval_mode=False):
     """
     plot the scenarios for one agent
     """
@@ -60,10 +62,10 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     fig,axes1 = plt.subplots(nrows,ncols,figsize=(ncols*8,nrows*5))
     ax_list1 = axes1.flatten() #type:ignore
     # Plot longitudinal velocity and activity
-    ax_list1[0] = plot_actor_activity(agent_activity["long_v"],solo_scenario["lo"],\
+    ax_list1[0] = plot_actor_activity(agent_activity["long_v"],solo_scenario["lo_act"],\
         valid_start,valid_end,ax_list1[0],"Longitudinal velocity [m/s]","Longitudinal activity [-]","Longitudinal")
     # Plot longitudinal velocity and activity
-    ax_list1[1] = plot_actor_activity(agent_activity["yaw_rate"],solo_scenario["la"],\
+    ax_list1[1] = plot_actor_activity(agent_activity["yaw_rate"],solo_scenario["la_act"],\
         valid_start,valid_end,ax_list1[1],"Yaw rate[rad/s]","Lateral activity [-]","Lateral")
     plt.tight_layout()
     SOLO_ACTIVITY_PATH = AGENT_FIG_PATH / f"{agent}_activity.jpg"
@@ -79,21 +81,24 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     fig2,axes2 = plt.subplots(nrows,ncols,figsize=(ncols*15,nrows*15))
     ax_list2 = axes2.flatten() #type:ignore
     # extended trajectory pologons
-    etp = agent_state.expanded_polygon_set(TTC=TTC_2,sampling_fq=10)
+    _ = agent_state.expanded_polygon_set(TTC=TTC_2,sampling_fq=sampling_frequency)
+    etp = agent_state.expanded_multipolygon
     # generate the extended bounding boxes
     ebb = agent_state.expanded_bbox_list(expand=bbox_extension)
     # plot band relations type 1
-    ax_list2[0],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list2[0],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
+
+    ax_list2[0],_,_,_ = plot_road_graph(parsed,ax=ax_list2[0],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l,eval_mode=eval_mode)
     # plot band relations type 2
-    ax_list2[1],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list2[1],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
+    ax_list2[1],_,_,_ = plot_road_graph(parsed,ax=ax_list2[1],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l,eval_mode=eval_mode)
     actor_dict = {"vehicle":1,"pedestrian":2,"cyclist":3}
     for key in agent_interalation:
         guest_type,guest_id = key.split("_")
-        guest_state,_ = actor_creator(actor_dict[guest_type],int(guest_id),DATADIR,FILE)
+        guest_state,_ = actor_creator(actor_dict[guest_type],int(guest_id),parsed,eval_mode=eval_mode)
         _ = guest_state.data_preprocessing()
         guest_trajectory_polygon = guest_state.polygon_set()
         # extended trajectory pologons
-        guest_etp = guest_state.expanded_polygon_set(TTC=TTC_2,sampling_fq=10)
+        _ = guest_state.expanded_polygon_set(TTC=TTC_2,sampling_fq=sampling_frequency)
+        guest_etp = guest_state.expanded_multipolygon
         # generate the extended bounding boxes
         guest_ebb = guest_state.expanded_bbox_list(expand=bbox_extension)
         guest_v_s,guest_v_e = guest_state.get_validity_range()
@@ -134,15 +139,16 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     plt.rc('font',family='Times New Roman',size=font2['size'])
     fig3,axes3 = plt.subplots(nrows,ncols,figsize=(ncols*15,nrows*15))
     ax_list3 = axes3.flatten() #type:ignore
-    ax_list3[0],s_e,o_d_r,o_d_l = plot_road_graph(DATADIR,FILE,ax=ax_list3[0],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
+    ax_list3[0],s_e,o_d_r,o_d_l = plot_road_graph(parsed,ax=ax_list3[0],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l,eval_mode=eval_mode)
     ax_list3[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[0],"Actual trajectory",gradient=True,host=True,type_a=True)
     handels,labels = ax_list3[0].get_legend_handles_labels()
     by_label = OrderedDict(zip(labels,handels))
     ax_list3[0].legend(by_label.values(),by_label.keys(),markerscale=15,prop=font2)
     ax_list3[0] = set_scaling_2(ax_list3[0],agent_state,valid_start,valid_end)
     # plot relation with static elements
-    actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1,sampling_fq=10)
-    ax_list3[1],_,_,_ = plot_road_graph(DATADIR,FILE,ax=ax_list3[1],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l)
+    actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1,sampling_fq=sampling_frequency)
+    ax_list3[1],_,_,_ = plot_road_graph(parsed,ax=ax_list3[1],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l,eval_mode=eval_mode)
+
     ax_list3[1] = plot_actor_polygons(actor_expanded_multipolygon,valid_start,valid_end,ax_list3[1],"Extended trajectory host",gradient=False,host=True,type_a=False)
     ax_list3[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[1],"Actual trajectory host",gradient=False,host=True,type_a=True)
     handels,labels = ax_list3[1].get_legend_handles_labels()
@@ -154,11 +160,11 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,DATAD
     plt.close()
     return 0
 
-def plot_road_graph(DATADIR,FILE,ax,environment_element=None,original_data_roadgragh=None,original_data_light=None):
+def plot_road_graph(parsed:dict,ax,environment_element=None,original_data_roadgragh=None,original_data_light=None,eval_mode=False):
     if not environment_element or not original_data_roadgragh or not original_data_light:
-        environment_element = EnvironmentElementsWaymo(DATADIR,FILE)
-        original_data_roadgragh,original_data_light = environment_element.road_graph_parser()
-        environment_element.create_polygon_set(parsing_mode=False)
+        environment_element = EnvironmentElementsWaymo(parsed)
+        original_data_roadgragh,original_data_light = environment_element.road_graph_parser(eval_mode=eval_mode)
+        environment_element.create_polygon_set(eval_mode=eval_mode)
     # plot lanes
     for lane_type in lane_key:
         lane_polygon_set = environment_element.get_lane(lane_type)
@@ -251,11 +257,9 @@ def plot_actor_polygons(actor_polygon,valid_start:int,valid_end:int,ax,polygon_l
                     else:
                         color,transparency = actor_color['guest_e']['color'],actor_color['guest_e']['alpha']
                     ax.fill(x,y,c=color,alpha=transparency,label=polygon_label)
-
     return ax
 
 def plot_actor_activity(data,activity,valid_start,valid_end,ax1,legend_data:str,legend_activity:str,title:str):
-    # sampling frequency = 10
     if not isinstance(valid_start,int):
         valid_start = int(valid_start)
         valid_end = int(valid_end)
@@ -284,7 +288,6 @@ def plot_actor_activity(data,activity,valid_start,valid_end,ax1,legend_data:str,
     return ax1
 
 def plot_actor_activity_2(data,activity,valid_start,valid_end,ax1,ax2,legend_data:str,legend_activity:str,title:str):
-    # sampling frequency = 10
     if not isinstance(valid_start,int):
         valid_start = int(valid_start)
         valid_end = int(valid_end)
@@ -306,11 +309,10 @@ def plot_actor_activity_2(data,activity,valid_start,valid_end,ax1,ax2,legend_dat
     return ax1,ax2
 
 def get_color_map(ax,valid_start,valid_end,gradient:bool=False,plot:bool=False):
-
     if gradient:
         vs = np.linspace(valid_start,valid_end,valid_end-valid_start+1)
-        vs = vs / 10
-        norm = plt.Normalize(valid_start/10,valid_end/10) #type:ignore
+        vs = vs / sampling_frequency
+        norm = plt.Normalize(valid_start/sampling_frequency,valid_end/sampling_frequency) #type:ignore
         color_map = plt.cm.cool #type:ignore
         # plot one agent trajectory with rectangualrs
         sm = plt.cm.ScalarMappable(cmap=color_map, norm=norm) #type:ignore
@@ -319,7 +321,7 @@ def get_color_map(ax,valid_start,valid_end,gradient:bool=False,plot:bool=False):
         cb.set_label('time [s]',fontfamily=font2['family'],fontsize=font2['size'])
         cb.set_ticks(np.linspace(np.min(vs),np.max(vs),9))
         ticks = cb.get_ticks()
-        cblabels = np.linspace(valid_start,valid_end,len(ticks))/10
+        cblabels = np.linspace(valid_start,valid_end,len(ticks))/sampling_frequency
         cblabels = [f"{i:.2f}" for i in cblabels]
         cb.set_ticks(ticks,labels=cblabels,fontfamily=font2['family'],fontsize=font2['size'])
     else:
@@ -368,8 +370,8 @@ def get_scaling(ax,xlim,ylim,factor):
     return xlim,ylim
 
 def set_scaling_2(ax,agent_state,valid_start,valid_end):
-    position_x = agent_state.kinematics["x"].numpy().squeeze()[valid_start:valid_end+1]
-    position_y = agent_state.kinematics["y"].numpy().squeeze()[valid_start:valid_end+1]
+    position_x = agent_state.kinematics["x"].squeeze()[valid_start:valid_end+1]
+    position_y = agent_state.kinematics["y"].squeeze()[valid_start:valid_end+1]
     xlim,ylim = get_scaling(ax,[np.min(position_x),np.max(position_x)],[np.min(position_y),np.max(position_y)],40)
     # xlim = [max(xlim[0],xlim_[0]),min(xlim[1],xlim_[1])]
     # ylim = [max(ylim[0],ylim_[0]),min(ylim[1],ylim_[1])]

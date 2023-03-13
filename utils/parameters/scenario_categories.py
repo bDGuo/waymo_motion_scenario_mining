@@ -4,41 +4,42 @@
 
 from dataclasses import dataclass
 
-class SCBasis:
+class SCBasis():
     """
     This is the basis for all scenario categories.
     The dictionary of host/guest_actor_tag overwritten by the child class.
     """
     #####   general info    #####
-    SC_ID : str = "SC_0"
+    SC_ID: str = "SC_0"
     description = "This is the basis for all scenario categories."
-    source:str = ""
-    source_file:str = ""
+    source: str = ""
+    source_file: str = ""
     #####   host actor  #####
-    host_actor_type =[]
-    host_actor_tag : dict = {
-    "lo_act" : [],
-    "la_act" : [],
-    "road_relation" : [],
-    "road_type" : [],
-    "inter_actor_relation" : [],
-    "inter_actor_position" : [],
-    'inter_actor_vel_dir':[],
+    host_actor_type = []
+    host_actor_tag: dict = {
+        "lo_act": [],
+        "la_act": [],
+        "road_relation": [],
+        "road_type": [],
+        "inter_actor_relation": [],
+        "inter_actor_position": [],
+        'inter_actor_vel_dir': [],
     }
     #####   guest actor  #####
     guest_actor_type = []
-    guest_actor_tag : dict = {
-    "lo_act" : [],
-    "la_act" : [],
-    "road_relation" : [],
-    "road_type" : [],
-    "inter_actor_relation" : [],
-    "inter_actor_position" : [],
-    'inter_actor_vel_dir':[],
+    guest_actor_tag: dict = {
+        "lo_act": [],
+        "la_act": [],
+        "road_relation": [],
+        "road_type": [],
+        "inter_actor_relation": [],
+        "inter_actor_position": [],
+        'inter_actor_vel_dir': [],
     }
     envr_tag = {
         'light_state': []
     }
+
 
 @dataclass
 class Car2CarFrontTurn(SCBasis):
@@ -55,25 +56,26 @@ class Car2CarFrontTurn(SCBasis):
     #####   host actor  #####
     host_actor_type = ["vehicle"]
     host_actor_tag = {
-    "lo_act" : ['accelerating','cruising','decelerating'], # forward
-    'la_act' : ['turning left','turning right'],
-    "road_relation" : [],
-    "road_type" : [],
-    "inter_actor_relation" : ['estimated collision',"estimated collision+close proximity"],
-    "inter_actor_position" : ['front'],
-    'inter_actor_vel_dir':['opposite']    
+        "lo_act": ['accelerating', 'cruising', 'decelerating'],  # forward
+        'la_act': ['turning left', 'turning right'],
+        "road_relation": [],
+        "road_type": [],
+        "inter_actor_relation": ['estimated collision', "estimated collision+close proximity"],
+        "inter_actor_position": ['front'],
+        'inter_actor_vel_dir': ['opposite']
     }
     #####   guest actor  #####
     guest_actor_type = ["vehicle"]
     guest_actor_tag = {
-    "lo_act" : ['accelerating','cruising','decelerating'],
-    "la_act" : ['swerving left','swerving right','going straight'],
-    "road_relation" : [],
-    "road_type" : [],
-    "inter_actor_relation" : [],
-    "inter_actor_position" : [],
-    'inter_actor_vel_dir':[]
+        "lo_act": ['accelerating', 'cruising', 'decelerating'],
+        "la_act": ['swerving left', 'swerving right', 'going straight'],
+        "road_relation": [],
+        "road_type": [],
+        "inter_actor_relation": [],
+        "inter_actor_position": [],
+        'inter_actor_vel_dir': []
     }
+
 
 @dataclass
 class Car2BycFrontTurn(Car2CarFrontTurn):
@@ -85,6 +87,7 @@ class Car2BycFrontTurn(Car2CarFrontTurn):
     #####   guest actor  #####
     guest_actor_type = ["cyclist"]
 
+
 @dataclass
 class Car2PedFrontTurn(Car2CarFrontTurn):
     """
@@ -94,6 +97,7 @@ class Car2PedFrontTurn(Car2CarFrontTurn):
     SC_ID = "SC8"
     #####   guest actor  #####
     guest_actor_type = ["pedestrian"]
+
 
 @dataclass
 class Car2CarFrontHeadon(SCBasis):
@@ -105,35 +109,39 @@ class Car2CarFrontHeadon(SCBasis):
     #####   host actor  #####
     host_actor_type = ["vehicle"]
     host_actor_tag = {
-    "lo_act" : ['accelerating','cruising','decelerating'], # forward
-    'la_act' : ['swerving left','swerving right','going straight'],
-    "road_relation" : [],
-    "road_type" : [],
-    "inter_actor_relation" : ['estimated collision','close proximity',"estimated collision+close proximity"],
-    "inter_actor_position" : ['front'],
-    'inter_actor_vel_dir':['opposite']
+        "lo_act": ['accelerating', 'cruising', 'decelerating'],  # forward
+        'la_act': ['swerving left', 'swerving right', 'going straight'],
+        "road_relation": [],
+        "road_type": [],
+        "inter_actor_relation": ['estimated collision', 'close proximity', "estimated collision+close proximity"],
+        "inter_actor_position": ['front'],
+        'inter_actor_vel_dir': ['opposite']
     }
     #####   guest actor  #####
     guest_actor_type = ["vehicle"]
     guest_actor_tag = {
-    "lo_act" : ['accelerating','cruising','decelerating'],
-    "la_act" : ['swerving left','swerving right','going straight'],
-    "road_relation" : [],
-    "road_type" : [],
-    "inter_actor_relation" : [],
-    "inter_actor_position" : []
+        "lo_act": ['accelerating', 'cruising', 'decelerating'],
+        "la_act": ['swerving left', 'swerving right', 'going straight'],
+        "road_relation": [],
+        "road_type": [],
+        "inter_actor_relation": [],
+        "inter_actor_position": []
     }
+
 
 @dataclass
 class Car2PedFrontHeadon(Car2CarFrontHeadon):
     SC_ID = "SC_10"
     description = "Car-to-pedestrian_front_headon"
     guest_actor_type = ["pedestrian"]
+
+
 @dataclass
 class Car2BycFrontHeadon(Car2CarFrontHeadon):
     SC_ID = "SC_4"
     description = "Car-to-cyclist_front_headon"
     guest_actor_type = ["cyclist"]
+
 
 @dataclass
 class Car2CarCrossStraight(SCBasis):
@@ -145,24 +153,25 @@ class Car2CarCrossStraight(SCBasis):
     #####   host actor  #####
     host_actor_type = ["vehicle"]
     host_actor_tag = {
-    "lo_act" : ['accelerating','cruising','decelerating'], # forward
-    'la_act' : ['swerving left','swerving right','going straight'],
-    "road_relation" : [],
-    "road_type" : [],
-    "inter_actor_relation" : ['estimated collision','close proximity',"estimated collision+close proximity"],
-    "inter_actor_position" : ['front'],
-    'inter_actor_vel_dir':['left','right']
+        "lo_act": ['accelerating', 'cruising', 'decelerating'],  # forward
+        'la_act': ['swerving left', 'swerving right', 'going straight'],
+        "road_relation": [],
+        "road_type": [],
+        "inter_actor_relation": ['estimated collision', 'close proximity', "estimated collision+close proximity"],
+        "inter_actor_position": ['front'],
+        'inter_actor_vel_dir': ['left', 'right']
     }
     #####   guest actor  #####
     guest_actor_type = ["vehicle"]
     guest_actor_tag = {
-    "lo_act" : ['accelerating','cruising','decelerating'],
-    "la_act" : ['swerving left','swerving right','going straight'],
-    "road_relation" : [],
-    "road_type" : [],
-    "inter_actor_relation" : [],
-    "inter_actor_position" : []
+        "lo_act": ['accelerating', 'cruising', 'decelerating'],
+        "la_act": ['swerving left', 'swerving right', 'going straight'],
+        "road_relation": [],
+        "road_type": [],
+        "inter_actor_relation": [],
+        "inter_actor_position": []
     }
+
 
 @dataclass
 class Car2PedCrossStraight(Car2CarCrossStraight):
@@ -170,11 +179,13 @@ class Car2PedCrossStraight(Car2CarCrossStraight):
     description = "Car-to-pedestrian_crossing_straight_crossing_path"
     guest_actor_type = ["pedestrian"]
 
+
 @dataclass
 class Car2BycCrossStraight(Car2CarCrossStraight):
     SC_ID = "SC_12"
     description = "Car-to-cyclist_crossing_straight_crossing_path"
     guest_actor_type = ["cyclist"]
+
 
 @dataclass
 class CarViolateTrafficLight(SCBasis):
@@ -186,28 +197,32 @@ class CarViolateTrafficLight(SCBasis):
     #####   host actor  #####
     host_actor_type = ["vehicle"]
     host_actor_tag = {
-    "lo_act" : [],
-    'la_act' : [],
-    "road_relation" : ['staying','entering','leaving'],
-    "road_type" : ['controlled_lane'],
-    "inter_actor_relation" : [],
-    "inter_actor_position" : []
+        "lo_act": [],
+        'la_act': [],
+        "road_relation": ['staying', 'entering', 'leaving'],
+        "road_type": ['controlled_lane'],
+        "inter_actor_relation": [],
+        "inter_actor_position": []
     }
     #####   guest actor  #####
     # skip
     #####    environment  #####
     envr_tag = {
-        'light_state': ['Arrow stop','Stop','Flashing stop']
+        'light_state': ['Arrow stop', 'Stop', 'Flashing stop']
     }
 
-ScenarioCatelog={
-    "SC1":Car2CarFrontTurn,
-    "SC5":Car2BycFrontTurn,
-    "SC8":Car2PedFrontTurn,
-    "SC3":Car2CarFrontHeadon,
-    "SC10":Car2PedFrontHeadon,
-    "SC4":Car2BycFrontHeadon,
-    "SC11":CarViolateTrafficLight,
-    "SC2":Car2CarCrossStraight,
-    "SC7":Car2PedCrossStraight,
+
+scenario_catalog = {
+    "SC1": Car2CarFrontTurn,
+    "SC5": Car2BycFrontTurn,
+    "SC8": Car2PedFrontTurn,
+
+    "SC3": Car2CarFrontHeadon,
+    "SC10": Car2PedFrontHeadon,
+    "SC4": Car2BycFrontHeadon,
+
+    "SC11": CarViolateTrafficLight,
+    
+    "SC2": Car2CarCrossStraight,
+    "SC7": Car2PedCrossStraight,
 }

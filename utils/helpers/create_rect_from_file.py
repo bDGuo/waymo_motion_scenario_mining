@@ -6,22 +6,33 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 from actor import Actor
 from .data_parser import features_description
+from .carla_data_parser import parse_carla_data
 import random
 import time
+import numpy as np
 
-def get_parsed_data(DATADIR,FILE):
-    FILENAME = os.path.join(DATADIR,FILE)
-    dataset = tf.data.TFRecordDataset(FILENAME, compression_type='')
+
+def get_parsed_data(data_path):
+    dataset = tf.data.TFRecordDataset(data_path, compression_type='')
     data = next(dataset.as_numpy_iterator())
     parsed = tf.io.parse_single_example(data, features_description)
     return parsed
-    
-def get_agent_list(agent_type:int,DATADIR,FILE):
-    parsed = get_parsed_data(DATADIR,FILE)
-    # a tensor for corresponding agent type
-    return tf.where(parsed['state/type']==agent_type).numpy().squeeze()
 
-def actor_creator(agent_type:int, choice:int,DATADIR,FILE):
+def get_parsed_carla_data(data_path):
+    """
+    parsing data from carla simulated traffic scenario
+    similar to get_parsed_data()
+    """
+    return parse_carla_data(data_path)
+    
+def get_agent_list(agent_type:int,parsed,eval_mode=False):
+    # a tensor for corresponding agent type
+    if eval_mode:
+        return np.where(parsed['state/type'].squeeze()==agent_type)[0]
+    else:
+        return tf.where(parsed['state/type']==agent_type).numpy().squeeze()
+
+def actor_creator(agent_type:int, choice:int,parsed:dict, eval_mode:bool=False):
     """
     description:
     Create dynamical rectangular object from data.
@@ -33,7 +44,6 @@ def actor_creator(agent_type:int, choice:int,DATADIR,FILE):
     output:
     an rect_object instance
     """
-    parsed = get_parsed_data(DATADIR,FILE)
 
     # a tensor for corresponding agent type
     
@@ -45,10 +55,12 @@ def actor_creator(agent_type:int, choice:int,DATADIR,FILE):
         agent_index = tf.gather(agent_indices_ts,choice)
     else:
         agent_index = choice
-    
-    actor_state_dict_tf = __actor_state(parsed,agent_index)
+    if eval_mode:
+        actor_state_dict = __actor_state_carla(parsed,agent_index)
+    else:
+        actor_state_dict = __actor_state(parsed,agent_index)
 
-    actor = Actor(actor_state_dict_tf)
+    actor = Actor(actor_state_dict)
     if choice == -1:
         return actor,choice
     return actor,choice
@@ -67,7 +79,33 @@ def __actor_state(parsed,agent_index):
         'velocity_y':tf.gather(tf.concat([parsed['state/past/velocity_y'],parsed['state/current/velocity_y'],parsed['state/future/velocity_y']],1),agent_index),
         'validity':tf.gather(tf.concat([parsed['state/past/valid'],parsed['state/current/valid'],parsed['state/future/valid']],1),agent_index)
         }
-    return actor_state_dict_tf
+    actor_state_dict = {}
+    for k,v in actor_state_dict_tf.items():
+        actor_state_dict[k] = v.numpy().squeeze()
+    return actor_state_dict
+
+def __actor_state_carla(parsed, agent_index):
+    """
+    parse actor state from carla simulated traffic scenario
+    similar to __actor_state()
+    """
+    actor_state_dict_carla ={
+        'id':parsed['state/id'][agent_index], 
+        'type':parsed['state/type'][agent_index],
+        'x':parsed['state/x'][agent_index,:],
+        'y':parsed['state/y'][agent_index,:],
+        'bbox_yaw':parsed['state/bbox_yaw'][agent_index,:],
+        'length':parsed['state/length'][agent_index,:],
+        'width':parsed['state/width'][agent_index,:],
+        'vel_yaw':parsed['state/vel_yaw'][agent_index,:],
+        'velocity_x':parsed['state/velocity_x'][agent_index,:],
+        'velocity_y':parsed['state/velocity_y'][agent_index,:],
+        'validity':parsed['state/valid'][agent_index,:]
+        }
+    actor_state_dict = {}
+    for k,v in actor_state_dict_carla.items():
+        actor_state_dict[k] = v.squeeze()
+    return actor_state_dict
 
 
 

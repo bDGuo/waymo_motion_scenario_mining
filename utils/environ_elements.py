@@ -1,7 +1,7 @@
 
 import numpy as np
 from typing import Dict,Tuple
-from helpers.create_rect_from_file import get_parsed_data
+from helpers.create_rect_from_file import get_parsed_data, get_parsed_carla_data
 from shapely.geometry import LineString,Polygon,Point,MultiPolygon
 from pathlib import Path
 
@@ -39,7 +39,7 @@ class EnvironmentElementsWaymo:
     --------------------------------------------------------------
     
     """
-    def __init__(self,DATADIR,FILE) -> None:
+    def __init__(self,parsed) -> None:
         """
         original_data_roadgragh: dict     the original data from the dataset
         {'roadgraph_samples_xyz', 'roadgraph_samples_type', 'roadgraph_samples_lane_id',"roadgraph_dir_xyz"}
@@ -50,8 +50,7 @@ class EnvironmentElementsWaymo:
 
         NOTICE: all time of traffic light data should be concatenated 
         """
-        self.DATADIR = DATADIR
-        self.FILE = FILE
+        self.parsed = parsed
         self.view_port = {}
         # following are the lane type set in the Waymo Motion Dataset
         self.lane_type = {'freeway':1,'surface_street':2,'bike_lane':3,
@@ -71,24 +70,33 @@ class EnvironmentElementsWaymo:
     def __call__(self):
         return self.create_polygon_set()
     
-    def road_graph_parser(self)->tuple:
-        decoded_example = get_parsed_data(self.DATADIR,self.FILE)
+    def road_graph_parser(self,eval_mode=False)->tuple:
+
+        decoded_example = self.parsed
+        if eval_mode:
+            roadgraph_xyz = decoded_example['roadgraph_samples/xyz']
+            roadgraph_type = decoded_example['roadgraph_samples/type']
+            roadgraph_lane_id = decoded_example['roadgraph_samples/id']
+            traffic_lights_id = decoded_example['traffic_light_state/id']
+            traffic_lights_valid = decoded_example['traffic_light_state/valid']
+            traffic_lights_state = decoded_example['traffic_light_state/state']
+            traffic_lights_pos_x = decoded_example['traffic_light_state/x']
+            traffic_lights_pos_y = decoded_example['traffic_light_state/y']
+        else:
         # [num_points, 3] float32.
-        roadgraph_xyz = decoded_example['roadgraph_samples/xyz'].numpy()
-        roadgraph_type = decoded_example['roadgraph_samples/type'].numpy()
-        roadgraph_lane_id = decoded_example['roadgraph_samples/id'].numpy()
-        roadgraph_dir_xyz = decoded_example['roadgraph_samples/dir'].numpy()
-        # concatenate past,current and future states of traffic lights
-        #[num_steps,num_light_positions]
-        traffic_lights_id = np.concatenate([decoded_example['traffic_light_state/past/id'].numpy(),decoded_example['traffic_light_state/current/id'].numpy(),decoded_example['traffic_light_state/future/id'].numpy()],axis=0)
-        traffic_lights_valid = np.concatenate([decoded_example['traffic_light_state/past/valid'].numpy(),decoded_example['traffic_light_state/current/valid'].numpy(),decoded_example['traffic_light_state/future/valid'].numpy()],axis=0)
-        traffic_lights_state = np.concatenate([decoded_example['traffic_light_state/past/state'].numpy(),decoded_example['traffic_light_state/current/state'].numpy(),decoded_example['traffic_light_state/future/state'].numpy()],axis=0)
-        traffic_lights_pos_x = np.concatenate([decoded_example['traffic_light_state/past/x'].numpy(),decoded_example['traffic_light_state/current/x'].numpy(),decoded_example['traffic_light_state/future/x'].numpy()],axis=0)
-        traffic_lights_pos_y = np.concatenate([decoded_example['traffic_light_state/past/y'].numpy(),decoded_example['traffic_light_state/current/y'].numpy(),decoded_example['traffic_light_state/future/y'].numpy()],axis=0)
+            roadgraph_xyz = decoded_example['roadgraph_samples/xyz'].numpy()
+            roadgraph_type = decoded_example['roadgraph_samples/type'].numpy()
+            roadgraph_lane_id = decoded_example['roadgraph_samples/id'].numpy()
+            # concatenate past,current and future states of traffic lights
+            #[num_steps,num_light_positions]
+            traffic_lights_id = np.concatenate([decoded_example['traffic_light_state/past/id'].numpy(),decoded_example['traffic_light_state/current/id'].numpy(),decoded_example['traffic_light_state/future/id'].numpy()],axis=0)
+            traffic_lights_valid = np.concatenate([decoded_example['traffic_light_state/past/valid'].numpy(),decoded_example['traffic_light_state/current/valid'].numpy(),decoded_example['traffic_light_state/future/valid'].numpy()],axis=0)
+            traffic_lights_state = np.concatenate([decoded_example['traffic_light_state/past/state'].numpy(),decoded_example['traffic_light_state/current/state'].numpy(),decoded_example['traffic_light_state/future/state'].numpy()],axis=0)
+            traffic_lights_pos_x = np.concatenate([decoded_example['traffic_light_state/past/x'].numpy(),decoded_example['traffic_light_state/current/x'].numpy(),decoded_example['traffic_light_state/future/x'].numpy()],axis=0)
+            traffic_lights_pos_y = np.concatenate([decoded_example['traffic_light_state/past/y'].numpy(),decoded_example['traffic_light_state/current/y'].numpy(),decoded_example['traffic_light_state/future/y'].numpy()],axis=0)
         original_data_roadgragh = {
             'roadgraph_xyz':roadgraph_xyz,
             'roadgraph_type':roadgraph_type,
-            'roadgraph_dir_xyz':roadgraph_dir_xyz,
             'roadgraph_lane_id':roadgraph_lane_id
         }
         original_data_light = {
@@ -171,14 +179,12 @@ class EnvironmentElementsWaymo:
         """
         return self.controlled_lane['controlled_lane_polygon']
     
-    def create_polygon_set(self,parsing_mode:bool=True):
+    def create_polygon_set(self,eval_mode:bool=False):
         # [num_points, 3] float32.
-        if parsing_mode:
-            self.road_graph_parser()
+        self.road_graph_parser(eval_mode=eval_mode)
         roadgraph_xyz = self.original_data_roadgragh['roadgraph_xyz']
         roadgraph_type = self.original_data_roadgragh['roadgraph_type']
         roadgraph_lane_id = self.original_data_roadgragh['roadgraph_lane_id']
-        roadgraph_dir_xyz = self.original_data_roadgragh['roadgraph_dir_xyz']
         traffic_lights_id = self.original_data_light['traffic_lights_id']
         traffic_lights_valid_status = self.original_data_light['traffic_lights_valid']
         controlled_lanes_id = np.unique(traffic_lights_id[traffic_lights_valid_status==1])

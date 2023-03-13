@@ -2,7 +2,7 @@ from data_preprocessing import univariate_spline
 from math import pi
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import tensorflow as tf
+
 from actor import Actor
 import numpy as np
 from typing import List,Tuple
@@ -47,11 +47,11 @@ class LatActDetector:
                     -5      invalid data
         bbox_yaw_rate: cubic splined yaw rate           np.array [time_steps=91,]
         """
-        bbox_yaw = rect.kinematics["bbox_yaw"].numpy().squeeze() #[time_steps,]
+        bbox_yaw = rect.kinematics["bbox_yaw"] #[time_steps,]
         la_act = np.zeros_like(bbox_yaw)
         bbox_yaw_rate = np.zeros_like(bbox_yaw)
 
-        valid = tf.where(tf.squeeze(rect.validity)==1).numpy().squeeze() #[valid time_steps,]
+        valid = np.where((rect.validity)==1)[0] #[time_steps,]
 
         # fast return np.nan if only one bbox_yaw is valid
         if len(valid)<=1:
@@ -141,16 +141,12 @@ class LatActDetector:
 
     def __compute_yaw_rate(self,bbox_yaw_valid, t_s):
         """
-        yaw rate in [-pi,pi]
+        project bbox heading angle to [-pi,pi]
         """
-        # project bbox heading angle to [0,2pi]
-
-        bbox_yaw_valid = np.where(bbox_yaw_valid<0,bbox_yaw_valid+200*np.pi,bbox_yaw_valid)
-        bbox_yaw_valid = np.where(bbox_yaw_valid>2*np.pi, np.mod(bbox_yaw_valid,2*np.pi),bbox_yaw_valid)
-
+        bbox_yaw_valid = np.arctan2(np.sin(bbox_yaw_valid),np.cos(bbox_yaw_valid))
         bbox_yaw_rate_valid = bbox_yaw_valid - np.insert(bbox_yaw_valid[:-1],0,0)
         bbox_yaw_rate_valid[0] = 0
-        bbox_yaw_rate_valid = np.where(np.abs(bbox_yaw_rate_valid)>np.pi,\
+        bbox_yaw_rate_valid = np.where(np.abs(bbox_yaw_rate_valid)>=np.pi,\
                                 bbox_yaw_rate_valid-np.sign(bbox_yaw_rate_valid)*2*np.pi,\
                                 bbox_yaw_rate_valid)
         return bbox_yaw_rate_valid / t_s

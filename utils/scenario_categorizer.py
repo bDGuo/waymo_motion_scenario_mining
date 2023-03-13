@@ -1,7 +1,7 @@
 import numpy as np
 from typing import List, Dict, Tuple, Union, Iterable, Any
 from parameters.tags_dict import *
-from parameters.scenario_categories import ScenarioCatelog
+from parameters.scenario_categories import scenario_catalog
 
 
 class ScenarioCategorizer:
@@ -15,7 +15,7 @@ class ScenarioCategorizer:
         self.inter_actor_relation = result_dict['inter_actor_relation']
         self.actors_activity = result_dict['actors_activity']
         self.actors_environment_element_intersection = result_dict['actors_environment_element_intersection']
-        self.scenario_catalog = ScenarioCatelog
+        self.scenario_catalog = scenario_catalog
 
     def find_SC(self, scenario_category_ID: str):
         """

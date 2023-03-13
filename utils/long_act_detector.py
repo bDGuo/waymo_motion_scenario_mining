@@ -1,7 +1,5 @@
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
-import tensorflow as tf
 from actor import Actor
 import numpy as np
 from data_preprocessing import univariate_spline
@@ -20,29 +18,29 @@ class LongActDetector:
         return f"Longitudinal Activity Detector: Tags {self.lo_act_dict}."
         
 
-    def tagging(self,rect:Actor,k_h,max_acc,t_s=0.1,a_cruise=0.1,delta_v=1,time_steps=91,k_cruise=10,k=3,smoothing_factor=None)->tuple:
+    def tagging(self,rect:Actor,k_h,max_acc,t_s,a_cruise,delta_v,time_steps,k_cruise,k,smoothing_factor=None)->tuple:
         """
         Determine the longitudial activity of the input actor.
         ------------------------------------------------------
         Input:
         state:      rect_objects
-        k_h:        sample window (step)                       tf.int
-        t_s:        sample time (second),default=0.1 10hz      tf.float
+        k_h:        sample window (step)                        int
+        t_s:        sample time (second),default=0.1 10hz       float
                     this is aligned with sampling frequency
                     of the dataset
-        a_cruise:   maximum average acceleration               tf.float
+        a_cruise:   maximum average acceleration                float
                     default= 0.1 m/s^2
-        delta_v:    minimm speed increase                     tf.float
+        delta_v:    minimm speed increase                       float
                     default=1 m/s
-        time_steps: num_steps in a state                       tf.int
+        time_steps: num_steps in a state                        int
         k_cruise:   threshold num_steps in case of              int
                     very short cruising activities.
         k:          order for univariate spline                 int
         ------------------------------------------------------
         Output:
-        lo_act: longitudinal activity of sample time    tf.tensor [1,time_steps=91]
+        lo_act: longitudinal activity of sample time    np.array [time_steps=91,]
         refer the parameters.tag_dict for the meaning of the tags
-        long_v: splined longitudinal speed                 tf.tensor [1,time_steps=91]
+        long_v: splined longitudinal speed                 np.array [time_steps=91,]
         long_v1: not splined long. speed
         knots:  #knots of splining
         """
@@ -50,22 +48,22 @@ class LongActDetector:
         if k_h<=1:
             logger.warn(f"Signal window must be greater than 1.")
 
-        valid = tf.where(tf.squeeze(rect.validity)==1).numpy().squeeze() #[time_steps,]
+        valid = np.where((rect.validity)==1)[0] #[time_steps,]
         # rotating speed in x and y to longitudinal speed
         # [1,time_steps=91]
         (long_v1,_) = rect.cordinate_rotate(rect.kinematics['velocity_x'],\
                                         rect.kinematics['velocity_y'],\
                                         rect.kinematics['vel_yaw'])
         
-        long_v,knots = univariate_spline(long_v1.numpy(),valid,k,smoothing_factor)
+        long_v,knots = univariate_spline(long_v1,valid,k,smoothing_factor)
         # correct the abnormal data with max acc/dec = 0.7m/s2
         # long_v = clean_abnormal_data(long_v,valid,t_s,max_acc=max_acc)
         # assert len(long_v)>0
         # print(valid[-1])
-        lo_act,long_v = self.__long_act_detector_core(long_v,valid,rect,k_h,t_s,a_cruise,time_steps,delta_v,k_cruise)
+        lo_act,long_v = self.__long_act_detector_core(long_v,long_v1,valid,rect,k_h,t_s,a_cruise,time_steps,delta_v,k_cruise)
         return lo_act,long_v,long_v1,knots
 
-    def __long_act_detector_core(self,long_v,valid,rect,k_h,t_s,a_cruise,time_steps,delta_v,k_cruise):
+    def __long_act_detector_core(self,long_v,long_v1,valid,rect,k_h,t_s,a_cruise,time_steps,delta_v,k_cruise):
         lo_act = np.zeros_like(long_v)
         lo_act[:valid[0]] = float(self.new_tag_dict['invalid'])
         lo_act[valid[-1]+1:] = float(self.new_tag_dict['invalid'])
@@ -103,10 +101,10 @@ class LongActDetector:
                 else:
                     lo_act = self.__removing_short_cruising_act(lo_act,long_v,i,non_cruise_ind,valid[0])
         cruise_ind = np.where(lo_act==0)[0]
-        small_v_ind = np.where(np.abs(long_v)*t_s<=0.01*rect.kinematics['length'].numpy().squeeze()[valid][-1])[0]
+        small_v_ind = np.where(np.abs(long_v1)*t_s<=0.01*rect.kinematics['length'].squeeze()[valid][-1])[0]
         lo_act[np.intersect1d(cruise_ind,small_v_ind)] = float(self.new_tag_dict['standing still'])
         # reversing
-        lo_act = np.where(long_v<-0.1,float(self.new_tag_dict['reversing']),lo_act)
+        lo_act = np.where(long_v1*t_s<-0.01*rect.kinematics['length'].squeeze()[valid][-1],float(self.new_tag_dict['reversing']),lo_act)
         long_v[:valid[0]] = -5
         long_v[valid[-1]+1:] = -5
         return lo_act.squeeze(),long_v.squeeze()

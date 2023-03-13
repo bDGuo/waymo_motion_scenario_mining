@@ -2,7 +2,7 @@
 
 import numpy as np
 from collections import namedtuple
-from helpers.create_rect_from_file import get_agent_list, actor_creator
+from helpers.create_rect_from_file import get_agent_list, actor_creator, get_parsed_data, get_parsed_carla_data
 from helpers.helper_func import exchange_key_value
 from shapely.ops import unary_union
 from environ_elements import EnvironmentElementsWaymo
@@ -22,17 +22,22 @@ class TagsGenerator:
             'actors_environment_element_intersection': []
         }
 
-    def __call__(self, data_dir, file):
-        return self.tagging(data_dir, file)
+    def __call__(self, data_path,file):
+        return self.tagging(data_path,file)
 
     def __repr__(self) -> str:
         return f"TagsGenerator() tagging {self.tags.keys()}"
 
-    def tagging(self, data_dir, file: str):
+    def tagging(self, data_path,file,eval_mode=False):
         """
         tagging the actors in the scene
         """
-        environment_element = self.generate_lane_polygons(data_dir, file)
+        if eval_mode:
+            parsed = get_parsed_carla_data(data_path)
+        else:
+            parsed = get_parsed_data(data_path)
+
+        environment_element = self.generate_lane_polygons(parsed,eval_mode=eval_mode)
         agent_state_dict = {key: {} for key in actor_dict.keys()}
         actors_activity = {}  # [actor_type][actor_id][validity/lo_act/la_act]
         # [actor_type][actor_id][lane_type][expanded/trajectory],value is a list of area of intersection
@@ -42,7 +47,8 @@ class TagsGenerator:
         agent_pp_state_list = []
         for actor_type in actor_dict:
             agent_type = actor_dict[actor_type]
-            agent_list = get_agent_list(agent_type, data_dir, file)
+            # TODO: align with the carla data parser
+            agent_list = get_agent_list(agent_type, parsed, eval_mode=eval_mode)
             ##############################################
             actor_activity = {}
             actor_environment_element_intersection = {}
@@ -55,7 +61,9 @@ class TagsGenerator:
             for agent in agent_list:
                 # agent_activity = {}
                 agent_environment_element_intersection = {}
-                agent_state, _ = actor_creator(agent_type, agent, data_dir, file)
+                # TODO: align with the carla data parser
+                agent_state, _ = actor_creator(agent_type, agent, parsed, eval_mode = eval_mode)
+                validity_proportion = agent_state.data_preprocessing()
                 valid_start, valid_end = agent_state.get_validity_range()
                 # smoothing factor equals to the number of valid time steps
                 __smoothing_factor = valid_end - valid_start + 1
@@ -65,10 +73,9 @@ class TagsGenerator:
                     agent_idx = np.where(agent_list_2 == agent)[0]
                     agent_list_2 = np.delete(agent_list_2, agent_idx)
                     continue
-                validity_proportion = agent_state.data_preprocessing()
                 agent_key = f"{actor_type}_{agent}"
                 # extended trajectory polygons
-                _ = agent_state.expanded_polygon_set(TTC=TTC_2, sampling_fq=10)
+                _ = agent_state.expanded_polygon_set(TTC=TTC_2, sampling_fq=sampling_frequency)
                 etp = agent_state.expanded_multipolygon
                 # generate the extended bounding boxes
                 ebb = agent_state.expanded_bbox_list(expand=bbox_extension)
@@ -84,16 +91,16 @@ class TagsGenerator:
                 ######### long activity detection ###########
                 long_act_detector = LongActDetector()
                 lo_act, long_v, long_v1, knots = long_act_detector.tagging(agent_state, k_h, max_acc[agent_type],
-                                                                           t_s=0.1, a_cruise=a_cruise[agent_type],
-                                                                           delta_v=delta_v[agent_type],
-                                                                           time_steps=time_steps, k_cruise=10,
-                                                                           k=k, smoothing_factor=__smoothing_factor)
-                long_v = long_v.squeeze().tolist()
+                                                                           t_s, a_cruise[agent_type],
+                                                                           delta_v[agent_type],
+                                                                           time_steps, k_cruise,
+                                                                           k, smoothing_factor=__smoothing_factor)
+                long_v1 = long_v1.squeeze().tolist()
                 lo_act = lo_act.squeeze().tolist()
                 agent_activity = {
                     'validity/appearance': validity_proportion,
                     'lo_act': lo_act,
-                    'long_v': long_v
+                    'long_v': long_v1
                 }
                 #########  lateral activity detection #########
                 lat_act_detector = LatActDetector()
@@ -108,7 +115,7 @@ class TagsGenerator:
                 agent_state_dict[actor_type][agent_key] = agent_state
                 ######### interaction with environment elements #########
                 # Generate actors polygon set in shapely
-                actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1, sampling_fq=10)
+                actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1, sampling_fq=sampling_frequency)
                 # actor_expanded_multipolygon = actor_expanded_polygon
                 actor_trajectory_polygon = agent_state.polygon_set()
                 # compute intersection with all lane types
@@ -149,7 +156,7 @@ class TagsGenerator:
                                 'current_lane_id']
 
                     agent_lane_relation = self.__compute_relation_actor_road_feature(valid_start, valid_end, traj_ratio,
-                                                                                     expanded_ratio, type=key,
+                                                                                     expanded_ratio, road_type=key,
                                                                                      lane_id=agent_lane_id,
                                                                                      la_act=agent_activity['la_act'])
                     agent_environment_element_intersection[key] = {
@@ -279,9 +286,9 @@ class TagsGenerator:
                 traj_r = temp_traj_r
         return ctrl_lane_id
 
-    def generate_lane_polygons(self, data_dir: str, file: str):
-        environment_element_waymo = EnvironmentElementsWaymo(data_dir, file)
-        environment_element_waymo.create_polygon_set()
+    def generate_lane_polygons(self, parsed, eval_mode: bool = False):
+        environment_element_waymo = EnvironmentElementsWaymo(parsed)
+        environment_element_waymo.create_polygon_set(eval_mode=eval_mode)
         return environment_element_waymo
 
     def __initialize_with_example(self, example, number) -> list:
@@ -312,7 +319,7 @@ class TagsGenerator:
         compute the relation between the actor and the road features
         refer the parameters.tag_dict for the meaning of the relation 
         """
-        new_tag_dict = exchange_key_value(road_relation_dict.items())
+        new_tag_dict = exchange_key_value(road_relation_dict)
 
         if road_type in dashed_road_line_key:
             return self.__compute_actor_road_lane_change(valid_start, valid_end, trajectory_ratio, lane_id, la_act)
@@ -358,7 +365,7 @@ class TagsGenerator:
         compute time instances when lane change happens
         refer the parameters.tag_dict for the meaning of the relation 
         """
-        new_tag_dict = exchange_key_value(road_relation_dict.items())
+        new_tag_dict = exchange_key_value(road_relation_dict)
 
         actor_road_lane_change = np.ones_like(trajectory_ratio) * float(new_tag_dict["no lane change"])
         trajectory_ratio = np.array(trajectory_ratio)
@@ -384,7 +391,7 @@ class TagsGenerator:
         refer the parameters.tag_dict for the meaning of the relation 
         """
         print(f"generating inter actor relation...")
-        new_tag_dict = exchange_key_value(inter_actor_relation_dict.items())
+        new_tag_dict = exchange_key_value(inter_actor_relation_dict)
         inter_actor_relation = {}
         for agent_pp_state_1 in agent_pp_state_list:
             agent_key_1 = agent_pp_state_1.key
@@ -394,6 +401,7 @@ class TagsGenerator:
             length = agent_pp_state_1.length
             inter_actor_relation[agent_key_1] = {}
             for agent_pp_state_2 in agent_pp_state_list:
+
                 if agent_pp_state_2.key == agent_key_1:
                     continue
                 else:
@@ -406,10 +414,11 @@ class TagsGenerator:
                 vel_dir = np.ones(length) * float(new_tag_dict['not related'])
                 for step in range(length):
                     if agent_etp_1[step][0].area == 0 or agent_etp_2[step][0].area == 0:
+
                         continue
                     else:
                         etp_flag = 0
-                        for i, (polygon_1, polygon_2) in enumerate(zip(agent_etp_1[step], agent_etp_2[step])):
+                        for i,(polygon_1, _) in enumerate(zip(agent_etp_1[step], agent_etp_2[step])):
                             intersection_etp = polygon_1.intersection(agent_etp_2[step][i]).area
                             if intersection_etp:
                                 etp_flag = 1
@@ -427,7 +436,7 @@ class TagsGenerator:
                                                                                 agent_pp_state_2.x[step],
                                                                                 agent_pp_state_2.y[step])
                         try:
-                            vel_dir[step] = self.__compute_inter_actor_v_dir(agent_pp_state_1.v_dir[step],
+                            vel_dir[step] = self.compute_inter_actor_v_dir(agent_pp_state_1.v_dir[step],
                                                                              agent_pp_state_2.v_dir[step])
                         except Exception as e:
                             raise ValueError(f"Error:{e}.\nAgent1: {agent_key_1}, Agent2: {agent_key_2}, Step: {step}.")
@@ -445,9 +454,9 @@ class TagsGenerator:
         compute the position relation between two agents
         refer the parameters.tag_dict for the meaning of the relation 
         """
-        new_tag_dict = exchange_key_value(inter_actor_position_dict.items())
+        new_tag_dict = exchange_key_value(inter_actor_position_dict)
         position_relation_vector = np.array(
-            [x_2 - x_1, y_2, y_1])
+            [x_2 - x_1, y_2 - y_1])
         heading_vector = np.array([np.cos(theta_1), np.sin(theta_1)])
         cos_ = np.dot(position_relation_vector, heading_vector) / (np.linalg.norm(position_relation_vector))
         sin_ = np.cross(position_relation_vector, heading_vector) / (np.linalg.norm(position_relation_vector))
@@ -466,12 +475,12 @@ class TagsGenerator:
                 f"Unexpected value:{relative_angle} ")
         return position_relation
 
-    def __compute_inter_actor_v_dir(self, v_dir_1, v_dir_2):
+    def compute_inter_actor_v_dir(self, v_dir_1, v_dir_2):
         """
         compute the velocity direction relation between two agents
         refer the parameters.tag_dict for the meaning of the relation 
         """
-        new_tag_dict = exchange_key_value(inter_actor_vel_dir_dict.items())
+        new_tag_dict = exchange_key_value(inter_actor_vel_dir_dict)
         v_dir_1_vector = np.array([np.cos(v_dir_1), np.sin(v_dir_1)])
         v_dir_2_vector = np.array([np.cos(v_dir_2), np.sin(v_dir_2)])
         v_relative_dir = np.arctan2(np.cross(v_dir_1_vector, v_dir_2_vector), np.dot(v_dir_1_vector, v_dir_2_vector))
