@@ -74,20 +74,6 @@ class TagsGenerator:
                     agent_list_2 = np.delete(agent_list_2, agent_idx)
                     continue
                 agent_key = f"{actor_type}_{agent}"
-                # extended trajectory polygons
-                _ = agent_state.expanded_polygon_set(TTC=TTC_2, sampling_fq=sampling_frequency)
-                etp = agent_state.expanded_multipolygon
-                # generate the extended bounding boxes
-                ebb = agent_state.expanded_bbox_list(expand=bbox_extension)
-
-                x = agent_state.kinematics['x']
-                y = agent_state.kinematics['y']
-                theta = agent_state.kinematics['bbox_yaw']
-                v_dir = agent_state.kinematics['vel_yaw']
-
-                agent_extended_polygons = AgentExtendedPolygons(actor_type, agent_key, etp, ebb, time_steps, x, y,
-                                                                theta, v_dir)
-                agent_pp_state_list.append(agent_extended_polygons)
                 ######### long activity detection ###########
                 long_act_detector = LongActDetector()
                 lo_act, long_v, long_v1, knots = long_act_detector.tagging(agent_state, k_h, max_acc[agent_type],
@@ -109,13 +95,27 @@ class TagsGenerator:
                                                                  smoothing_factor=__smoothing_factor)
                 agent_activity['la_act'] = la_act.tolist()
                 agent_activity['yaw_rate'] = bbox_yaw_rate.tolist()
+                # extended trajectory polygons
+                _ = agent_state.expanded_polygon_set(TTC=TTC_2, sampling_fq=sampling_frequency,yaw_rate=bbox_yaw_rate)
+                etp = agent_state.expanded_multipolygon
+                # generate the extended bounding boxes
+                ebb = agent_state.expanded_bbox_list(expand=bbox_extension)
+
+                x = agent_state.kinematics['x']
+                y = agent_state.kinematics['y']
+                theta = agent_state.kinematics['bbox_yaw']
+                v_dir = agent_state.kinematics['vel_yaw']
+
+                agent_extended_polygons = AgentExtendedPolygons(actor_type, agent_key, etp, ebb, time_steps, x, y,
+                                                                theta, v_dir)
+                agent_pp_state_list.append(agent_extended_polygons)
                 ##########      other properties    ###########
                 agent_activity['valid'] = np.array([valid_start, valid_end], dtype=np.float32).tolist()
                 actor_activity[f"{agent_key}_activity"] = agent_activity
                 agent_state_dict[actor_type][agent_key] = agent_state
                 ######### interaction with environment elements #########
                 # Generate actors polygon set in shapely
-                actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1, sampling_fq=sampling_frequency)
+                actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1, sampling_fq=sampling_frequency, yaw_rate=bbox_yaw_rate)
                 # actor_expanded_multipolygon = actor_expanded_polygon
                 actor_trajectory_polygon = agent_state.polygon_set()
                 # compute intersection with all lane types

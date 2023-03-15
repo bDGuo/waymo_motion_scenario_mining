@@ -187,8 +187,14 @@ class Actor(ABC):
             else:
                 polygon_set.append(self.__instant_polygon(x_[i], y_[i], yaw_[i], length_[i], width_[i]))
         return polygon_set
+    
+    def set_yaw_rate(self, yaw_rate):
+        self.kinematics['yaw_rate'] = yaw_rate
+    
+    def get_kinematics(self)->dict:
+        return self.kinematics
 
-    def expanded_polygon_set(self, TTC: int, sampling_fq: int):
+    def expanded_polygon_set(self, TTC: int, sampling_fq: int, yaw_rate):
         """
         CTRV model: constant turn rate and velocity
         Using CTRV to predict the future trajectory of the ego vehicle in a shorter time(<=3s)
@@ -214,7 +220,8 @@ class Actor(ABC):
                 for j in range(1, int(TTC * sampling_fq)):
                     new_x_ = x_[i] + j / sampling_fq * vx_[i]
                     new_y_ = y_[i] + j / sampling_fq * vy_[i]
-                    expanded_polygon.append(self.__instant_polygon(new_x_, new_y_, yaw_[i], length_[i], width_[i]))
+                    new_theta_ = yaw_[i] + j / sampling_fq * yaw_rate[i]
+                    expanded_polygon.append(self.__instant_polygon(new_x_, new_y_, new_theta_, length_[i], width_[i]))
                     expanded_all_polygon.append(expanded_polygon[j - 1])
                 # expanded_polygon_set.append(MultiPolygon(expanded_polygon))
                 expanded_polygon_set.append(unary_union(expanded_polygon).buffer(0.01))
