@@ -221,7 +221,7 @@ class EnvironmentElementsWaymo:
             other_object_mask = np.where(roadgraph_type[:,0]==self.other_object_type[key])[0]
             other_object_pts = roadgraph_xyz[other_object_mask,:2]      # dim = [num_points,2]
             other_object_id_list = roadgraph_lane_id[other_object_mask] # dim = [num_points,1]
-            other_object_unique_id = np.unique(other_object_id_list) # dim = [num_other_objects,2]
+            other_object_unique_id = np.unique(other_object_id_list) # dim = [num_other_objects,1]
             for other_object_id in other_object_unique_id:
                 other_object_coordinates = other_object_pts[np.where(other_object_id_list==other_object_id)[0],:]
                 other_object_polygon = Polygon(other_object_coordinates)
