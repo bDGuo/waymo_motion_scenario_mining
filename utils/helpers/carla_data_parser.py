@@ -1,9 +1,8 @@
 import numpy as np
 import pickle
 from pathlib import Path
-from parameters.tag_parameters import time_steps
 
-num_time_steps = time_steps
+num_time_steps = 1 # default value
 
 # carla data feature description
 roadgraph_features = {
@@ -67,9 +66,10 @@ def parse_carla_data(data_path):
     """
     with open(data_path, 'rb') as f:
         data = pickle.load(f)
+        num_time_steps = data['state/length'][0,:].shape[0]
         data.update(traffic_light_features)
-        data['state/length'][0,:] = 4.2
-        data['state/width'][0,:] = 1.8
+        # data['state/length'][0,:] = 4.2
+        # data['state/width'][0,:] = 1.8
         data['state/bbox_yaw'][0,:] *= np.pi / 180
         data['state/vel_yaw'][0,:] *= np.pi / 180
         data['state/bbox_yaw'][1,:] *= np.pi / 180

@@ -15,17 +15,17 @@ actor_dict = {"vehicle":1,"pedestrian":2,"cyclist":3}
 
 k_cruise = 10
 k_h=6
-time_steps=283
+# time_steps=283
 # degree of smoothing spline
 k=3
 # default smoothing factor
-smoothing_factor = time_steps / 2
+# smoothing_factor = time_steps / 2
 t_s = 1 / sampling_frequency
 kernel = 6
 
 intgr_threshold_turn = 45 / 180 * np.pi
 intgr_threshold_swerv = 5 / 180 * np.pi
-sampling_threshold = intgr_threshold_turn / (t_s*time_steps)
+# sampling_threshold = intgr_threshold_turn / (t_s*time_steps)
 
 bbox_extension = 2 # extend length and width of the bbox by 2 times
 lane_key = ['freeway','surface_street','bike_lane']
@@ -41,12 +41,9 @@ tags_param = {
     "delta_v":delta_v,
     "actor_dict":actor_dict,
     "k_h":float(k_h),
-    "time_steps":float(time_steps),
     "k":float(k),
-    "smoothing_factor":float(smoothing_factor),
     "t_s":float(t_s),
     "kernel":float(kernel),
-    "sampling_threshold":sampling_threshold,
     "intgr_threshold_turn":intgr_threshold_turn,
     "intgr_threshold_swerv":intgr_threshold_swerv,
     "bbox_extension":bbox_extension,

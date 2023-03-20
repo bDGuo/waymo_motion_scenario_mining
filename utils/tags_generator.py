@@ -76,6 +76,8 @@ class TagsGenerator:
                 agent_key = f"{actor_type}_{agent}"
                 ######### long activity detection ###########
                 long_act_detector = LongActDetector()
+                time_steps = agent_state.time_steps
+                sampling_threshold = intgr_threshold_turn / (t_s*time_steps)
                 lo_act, long_v, long_v1, knots = long_act_detector.tagging(agent_state, k_h, max_acc[agent_type],
                                                                            t_s, a_cruise[agent_type],
                                                                            delta_v[agent_type],
@@ -141,14 +143,23 @@ class TagsGenerator:
                                 pos_lane_id = lane_id
                                 pos_lane_intersection = current_actual_intersection
                             intersection += current_actual_intersection
+                        if intersection:
+                            current_controlled_lane[
+                                step] = 1 if pos_lane_id in environment_element.controlled_lane_id else 0
+                            traj[step] = intersection
+                            traj_ratio[step] = intersection / actor_trajectory_polygon[step].area
+                            current_lane_id[step] = float(pos_lane_id)
+                        else:
+                            current_controlled_lane[step] = 0
+                            traj[step] = 0
+                            traj_ratio[step] = 0
+                            current_lane_id[step] = -99.0
+                        if intersection_expanded:
+                            expanded[step] = intersection_expanded
+                            expanded_ratio[step] = intersection_expanded / actor_expanded_multipolygon[step].area
+                        else:
+                            expanded[step], expanded_ratio[step] = 0 , 0
 
-                        current_controlled_lane[
-                            step] = 1 if pos_lane_id in environment_element.controlled_lane_id else 0
-                        expanded[step] = intersection_expanded
-                        traj[step] = intersection
-                        expanded_ratio[step] = intersection_expanded / actor_expanded_multipolygon[step].area
-                        traj_ratio[step] = intersection / actor_trajectory_polygon[step].area
-                        current_lane_id[step] = float(pos_lane_id)
 
                     if key in dashed_road_line_key:
                         for lane_key_type in lane_key:
@@ -185,10 +196,16 @@ class TagsGenerator:
                                     f"file:{file},Intersection computation: {e}.\n "
                                     f"type:{other_object_type},"
                                     f"polygon:{other_object_polygon}")
-                        expanded[step] = intersection_expanded
-                        traj[step] = intersection
-                        expanded_ratio[step] = intersection_expanded / actor_expanded_multipolygon[step].area
-                        traj_ratio[step] = intersection / actor_trajectory_polygon[step].area
+                        if intersection:
+                            traj[step] = intersection
+                            traj_ratio[step] = intersection / actor_trajectory_polygon[step].area
+                        else:
+                            traj[step], traj_ratio[step] = 0, 0
+                        if intersection_expanded:
+                            expanded[step] = intersection_expanded
+                            expanded_ratio[step] = intersection_expanded / actor_expanded_multipolygon[step].area
+                        else:
+                            expanded[step], expanded_ratio[step] = 0, 0
                     agent_lane_relation = self.__compute_relation_actor_road_feature(valid_start, valid_end, traj_ratio,
                                                                                      expanded_ratio)
                     agent_environment_element_intersection[other_object_type] = {
@@ -414,7 +431,6 @@ class TagsGenerator:
                 vel_dir = np.ones(length) * float(new_tag_dict['not related'])
                 for step in range(length):
                     if agent_etp_1[step][0].area == 0 or agent_etp_2[step][0].area == 0:
-
                         continue
                     else:
                         etp_flag = 0
