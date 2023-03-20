@@ -85,3 +85,8 @@ TagDict={
     'light_state' : light_state_dict,
     'inter_actor_vel_dir' : inter_actor_vel_dir_dict,
 }
+
+def reverse_k_v(dict):
+    return {v:k for k,v in dict.items()}
+
+ReTagDict = {k:reverse_k_v(v) for k,v in TagDict.items()}
