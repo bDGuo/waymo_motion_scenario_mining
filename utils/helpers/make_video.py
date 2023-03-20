@@ -6,11 +6,11 @@ from rich.progress import track
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from utils.parameters.tag_parameters import sampling_frequency
 
-#TODO: used for presenting the results of the etp and interactor relation
+#used for presenting the results of the etp and interactor relation
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument('--i', type=str, required=True, help='relative input directory')
-argparser.add_argument('--o', type=str, required=True, help='relative output directory')
+argparser.add_argument('--i', type=str, required=True, help='input directory, relative to results folder')
+argparser.add_argument('--o', type=str, required=True, help='relative output directory relative to results folder')
 argparser.add_argument('--video_name',type=str,required=False,default='video.avi',help='video name')
 
 if __name__ == "__main__":
