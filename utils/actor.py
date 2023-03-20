@@ -32,6 +32,7 @@ class Actor(ABC):
         self.expanded_multipolygon = []
         self.expanded_polygon = []
         self.expanded_bboxes = []
+        self.time_steps = self.kinematics['x'].shape[0]
 
     def ts_to_np(self):
         """
@@ -81,7 +82,7 @@ class Actor(ABC):
         appearance_start = valid[0]
         appearance_end = valid[-1]
         appearance_length = appearance_end - appearance_start + 1
-        # resize yaw angle in (0,2*pi) counter clockwise
+        # resize yaw angle in [-pi,pi)
         self.kinematics['bbox_yaw'] = self.__project_angel(self.kinematics['bbox_yaw'])
         self.kinematics['vel_yaw'] = self.__project_angel(self.kinematics['vel_yaw'])
         if len(mask) == 0:
@@ -132,9 +133,9 @@ class Actor(ABC):
 
     def __project_angel(self, angle):
         '''
-        project the angle to (0,2*pi)
+        project the angle to [-pi,pi)
         '''
-        return (angle + 100 * pi) % (2 * pi)
+        return np.arctan2 (np.sin(angle), np.cos(angle))
 
     def __interpolation(self, data, mask, valid, VELOCITY: bool = False):
         result = data.astype(np.float32).squeeze()
@@ -221,6 +222,8 @@ class Actor(ABC):
                     new_x_ = x_[i] + j / sampling_fq * vx_[i]
                     new_y_ = y_[i] + j / sampling_fq * vy_[i]
                     new_theta_ = yaw_[i] + j / sampling_fq * yaw_rate[i]
+                    # project new_theta_ to (-pi,pi)
+                    new_theta_ = self.__project_angel(new_theta_)
                     expanded_polygon.append(self.__instant_polygon(new_x_, new_y_, new_theta_, length_[i], width_[i]))
                     expanded_all_polygon.append(expanded_polygon[j - 1])
                 # expanded_polygon_set.append(MultiPolygon(expanded_polygon))
