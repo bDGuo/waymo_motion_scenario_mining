@@ -179,9 +179,9 @@ def plot_road_graph(parsed:dict,ax,environment_element=None,original_data_roadgr
             ax.fill(x,y,c=lane_color[other_object_type],label=f'{other_object_type}')
     # plot road lines
     ax = plot_road_lines(ax,original_data_roadgragh,original_data_light,road_lines=1) #type:ignore
-    ax.set_xlabel('x(m)',fontdict=font2)
-    ax.set_ylabel('y(m)',fontdict=font2)
-    ax.tick_params(labelsize=font2['size']*0.8)
+    ax.set_xlabel('x(m)',fontdict=font1)
+    ax.set_ylabel('y(m)',fontdict=font1)
+    ax.tick_params(labelsize=font1['size'])
     plt.xticks(fontname = "Times New Roman")
     plt.yticks(fontname = "Times New Roman")
     ax.set_aspect('equal')
@@ -323,7 +323,7 @@ def get_color_map(ax,valid_start,valid_end,gradient:bool=False,plot:bool=False):
         ticks = cb.get_ticks()
         cblabels = np.linspace(valid_start,valid_end,len(ticks))/sampling_frequency
         cblabels = [f"{i:.2f}" for i in cblabels]
-        cb.set_ticks(ticks,labels=cblabels,fontfamily=font2['family'],fontsize=font2['size'])
+        cb.set_ticks(ticks,labels=cblabels,fontfamily=font1['family'],fontsize=font1['size'])
     else:
         vs = np.linspace(valid_start,valid_end,valid_end-valid_start+1)
         norm = plt.Normalize(valid_start,valid_end) #type:ignore
