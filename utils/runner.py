@@ -17,7 +17,7 @@ from helpers.wechatter import wechatter
 from parameters import *
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--eval_mode', type=bool, required=False, default=False ,help='[bool] True for evaluation mode')
+parser.add_argument('--eval_mode', action="store_true" ,help='[bool] True for evaluation mode')
 eval_mode = parser.parse_args().eval_mode
 # working directory 
 # resolve() is to get the absolute path
@@ -43,6 +43,8 @@ if __name__ == '__main__':
     time_start = time.perf_counter()
     for DATA_PATH in track(DATA_DIR_WALK, description="Processing files"):
         FILE = DATA_PATH.name
+        if not FILE.endswith(".pkl") or FILE.endswith(".jpg"):
+            continue
         FILENUM = re.search(r"-(\d{5})-", FILE)
         if FILENUM is not None:
             FILENUM = FILENUM.group()[1:-1]
@@ -53,7 +55,10 @@ if __name__ == '__main__':
         result_dict = {}
         RESULT_FILENAME = f'Waymo_{FILENUM}_{RESULT_TIME}_tag.json'
         if eval_mode:
-            RESULT_FILENAME = f'Carla_{FILENUM}_{RESULT_TIME}_tag.json'
+            fileprefix = FILE.split('-')[0]
+        else:
+            fileprefix = 'Waymo'
+        RESULT_FILENAME = f'{fileprefix}_{FILENUM}_{RESULT_TIME}_tag.json'
         try:
             #   tagging
             tags_generator = TagsGenerator()
@@ -80,9 +85,7 @@ if __name__ == '__main__':
             #  solo scenario mining
             scenario_miner = ScenarioMiner()
             solo_scenarios = scenario_miner.mining(result_dict)
-            RESULT_FILENAME = f'Waymo_{FILENUM}_{RESULT_TIME}_solo.json'
-            if eval_mode:   
-                RESULT_FILENAME = f'Carla_{FILENUM}_{RESULT_TIME}_solo.json'
+            RESULT_FILENAME = f'{fileprefix}_{FILENUM}_{RESULT_TIME}_solo.json'
             with open(RESULT_DIR / RESULT_FILENAME, 'w') as f:
                 print(f"Saving solo scenarios.")
                 json.dump(solo_scenarios, f)
