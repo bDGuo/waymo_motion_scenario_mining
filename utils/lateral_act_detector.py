@@ -18,7 +18,7 @@ class LatActDetector:
     def __repr__(self) -> str:
         return f"Lateral Activity Detector: Tags {self.lat_act_dict}."
     
-    def tagging(self,rect:Actor,t_s:float,threshold:float,intgr_threshold_turn:float,intgr_threshold_swerv:float,k=3,smoothing_factor=None)->Tuple:
+    def tagging(self,rect:Actor,t_s:float,threshold:float,intgr_threshold_turn:float,intgr_threshold_swerv:float,k:int,smoothing_factor=None)->Tuple:
         """
         Determine the lateral activity of the input actor.
         Method:
@@ -53,7 +53,7 @@ class LatActDetector:
 
         valid = np.where((rect.validity)==1)[0] #[time_steps,]
 
-        # fast return np.nan if only one bbox_yaw is valid
+        # shortcut: return np.nan if only one bbox_yaw is valid
         if len(valid)<=1:
             for i in range(len(la_act)):
                 la_act[i] = np.nan
@@ -84,10 +84,10 @@ class LatActDetector:
             # counter clock-wise is turning left and the yaw_rate is positive
             yaw_rate_dir = np.sign(yaw_rate) # 1 for left, -1 for right
 
-            k_end,value = self.__end_lateral_activity(bbox_yaw_valid_rate[i:],threshold,yaw_rate_dir,intgr_threshold_turn,intgr_threshold_swerv,t_s,i)
-            la_act_valid[i:i+k_end] = yaw_rate_dir*value
-            if k_end:
-                [next(iter_yaw_valid_rate, None) for _ in range(k_end)]
+            t_end,value = self.__end_lateral_activity(bbox_yaw_valid_rate[i:],threshold,yaw_rate_dir,intgr_threshold_turn,intgr_threshold_swerv,t_s,i)
+            la_act_valid[i:i+t_end] = yaw_rate_dir*value
+            if t_end:
+                [next(iter_yaw_valid_rate, None) for _ in range(t_end)]
 
         la_act[valid[0]+1:valid[-1]+1] = la_act_valid.copy()
         bbox_yaw_rate[valid[0]:valid[-1]+1] = bbox_yaw_valid_rate.copy()
@@ -120,17 +120,6 @@ class LatActDetector:
             return index_nearest_opposite_yaw_rate,1
         if integration_nearest_opposite_yaw_rate >= intgr_threshold_swerv:
             return index_nearest_opposite_yaw_rate,2
-
-        # for i,yaw_rate in enumerate(future_yaw_valid_rate):
-        #     if np.abs(yaw_rate) <= threshold:
-        #         integration_yaw_rate = np.sum(future_yaw_valid_rate[:i]) * t_s * current_yaw_dir
-        #         if integration_yaw_rate >= intgr_threshold_turn:
-        #            return i
-        #     if yaw_rate*current_yaw_dir < 0:
-        #         integration_yaw_rate = np.sum(future_yaw_valid_rate[:i]) * t_s * current_yaw_dir
-
-        #         if integration_yaw_rate >= intgr_threshold_turn:
-        #             return i
 
         if np.sum(future_yaw_valid_rate)*t_s* current_yaw_dir >= intgr_threshold_turn:
             return len(future_yaw_valid_rate),1
