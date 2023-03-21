@@ -56,11 +56,11 @@ class Car2CarFrontTurn(SCBasis):
     #####   host actor  #####
     host_actor_type = ["vehicle"]
     host_actor_tag = {
-        "lo_act": ['accelerating', 'cruising', 'decelerating'],  # forward
-        'la_act': ['turning left', 'turning right'],
+        "lo_act": ['accelerating', 'cruising', 'decelerating','standing still'],  # forward
+        'la_act': ['turning left'],
         "road_relation": [],
         "road_type": [],
-        "inter_actor_relation": ['estimated collision', "estimated collision+close proximity"],
+        "inter_actor_relation": ['estimated collision', "close proximity", "estimated collision+close proximity"],
         "inter_actor_position": ['front'],
         'inter_actor_vel_dir': ['opposite']
     }
@@ -68,7 +68,7 @@ class Car2CarFrontTurn(SCBasis):
     guest_actor_type = ["vehicle"]
     guest_actor_tag = {
         "lo_act": ['accelerating', 'cruising', 'decelerating'],
-        "la_act": ['swerving left', 'swerving right', 'going straight'],
+        "la_act": ['swerving left', 'swerving right', 'going straight','standing still'],
         "road_relation": [],
         "road_type": [],
         "inter_actor_relation": [],
@@ -153,18 +153,18 @@ class Car2CarCrossStraight(SCBasis):
     #####   host actor  #####
     host_actor_type = ["vehicle"]
     host_actor_tag = {
-        "lo_act": ['accelerating', 'cruising', 'decelerating'],  # forward
+        "lo_act": ['accelerating', 'cruising', 'decelerating','standing still'],  # forward
         'la_act': ['swerving left', 'swerving right', 'going straight'],
         "road_relation": [],
         "road_type": [],
         "inter_actor_relation": ['estimated collision', 'close proximity', "estimated collision+close proximity"],
         "inter_actor_position": ['front'],
-        'inter_actor_vel_dir': ['left', 'right']
+        'inter_actor_vel_dir': []
     }
     #####   guest actor  #####
     guest_actor_type = ["vehicle"]
     guest_actor_tag = {
-        "lo_act": ['accelerating', 'cruising', 'decelerating'],
+        "lo_act": ['accelerating', 'cruising', 'decelerating','standing still'],
         "la_act": ['swerving left', 'swerving right', 'going straight'],
         "road_relation": [],
         "road_type": [],
@@ -211,6 +211,36 @@ class CarViolateTrafficLight(SCBasis):
         'light_state': ['Arrow stop', 'Stop', 'Flashing stop']
     }
 
+@dataclass
+class Car2BycPassingby(SCBasis):
+    #####   general info    #####
+    SC_ID = "SC13"
+    description = "The car and the bicyclist are going straight with a close proximity. The cyclist is on the left or right side to the car."
+    source = ""
+    source_file = ""
+    #####   host actor  #####
+    host_actor_type = ["vehicle"]
+    host_actor_tag = {
+        "lo_act": ['accelerating', 'cruising', 'decelerating','standing still'],  # forward
+        'la_act': ['swerving left', 'swerving right', 'going straight'],
+        "road_relation": [],
+        "road_type": [],
+        "inter_actor_relation": ['close proximity', "estimated collision+close proximity"],
+        "inter_actor_position": ['left','right'],
+        'inter_actor_vel_dir': ['same']
+    }
+    #####   guest actor  #####
+    guest_actor_type = ["cyclist"]
+    guest_actor_tag = {
+        "lo_act": ['accelerating', 'cruising', 'decelerating','standing still'],
+        "la_act": ['swerving left', 'swerving right', 'going straight'],
+        "road_relation": [],
+        "road_type": [],
+        "inter_actor_relation": [],
+        "inter_actor_position": []
+    }
+
+
 
 scenario_catalog = {
     "SC1": Car2CarFrontTurn,
@@ -225,4 +255,6 @@ scenario_catalog = {
     
     "SC2": Car2CarCrossStraight,
     "SC7": Car2PedCrossStraight,
+
+    "SC13": Car2BycPassingby,
 }
