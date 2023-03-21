@@ -21,14 +21,14 @@ for i in range(20):
     RESULT_FILE = RESULT_DIR / f"{args.prefix}_{FILE}_{RESULT_TIME}_tag.json"
     result_dict = json.load(open(RESULT_FILE, 'r'))
     scenario_categorizer = ScenarioCategorizer(FILE, result_dict)
-    for SC_ID in scenario_catalog.keys():
+    for SC_ID in ["SC1","SC7","SC13"]:
         try:
             SC_ID_dict = scenario_categorizer.find_SC(SC_ID)
             if not len(SC_ID_dict):
                 continue
             RESULT_SC_DIR = RESULT_DIR / SC_ID
             RESULT_SC_DIR.mkdir(parents=True, exist_ok=True)
-            json.dump(SC_ID_dict, open(RESULT_SC_DIR / f"Waymo_{FILE}_{RESULT_TIME}_{SC_ID}.json", 'w'))
+            json.dump(SC_ID_dict, open(RESULT_SC_DIR / f"{args.prefix}_{FILE}_{RESULT_TIME}_{SC_ID}.json", 'w'))
         except Exception as e:
             trace = traceback.format_exc()
             logger.error(f"SC:{SC_ID}.\nTag generation:{e}")
