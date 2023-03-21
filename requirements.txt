@@ -1,4 +1,4 @@
-
+absl==0.0
 absl_py==1.4.0
 matplotlib==3.7.0
 notebook==6.4.12
@@ -8,6 +8,6 @@ pandas==1.5.3
 rich==13.3.2
 scipy==1.9.1
 shapely==2.0.1
-tensorflow==2.11.0
+tensorflow==2.11.1
 tensorflow_intel==2.11.0
 wxauto==3.3.5.3
