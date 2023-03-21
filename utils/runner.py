@@ -32,7 +32,7 @@ DATA_DIR_WALK = DATA_DIR.iterdir()
 RESULT_TIME = time.strftime("%Y-%m-%d-%H_%M", time.localtime())
 RESULT_DIR = ROOT / "results/gp1" / RESULT_TIME
 if not RESULT_DIR.exists():
-    RESULT_DIR.mkdir()
+    RESULT_DIR.mkdir(exist_ok=True, parents=True)
 
 # parser = argparse.ArgumentParser()
 # parser.add_argument('--file', type=str, required=True, help='#file to plot.e.g.:00003')
