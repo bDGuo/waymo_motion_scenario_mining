@@ -11,15 +11,15 @@ from utils.parameters.tag_parameters import sampling_frequency
 #used for presenting the results of the etp and interactor relation
 
 argparser = argparse.ArgumentParser()
-argparser.add_argument('--i', type=str, required=True, help='input directory, relative to results folder')
-argparser.add_argument('--o', type=str, required=True, help='relative output directory relative to results folder')
+argparser.add_argument('--sc', type=str, required=True, help='scenario category')
+argparser.add_argument('--id', type=str, required=True, help='data_id')
 argparser.add_argument('--video_name',type=str,required=False,default='video.avi',help='video name')
 
 if __name__ == "__main__":
     ROOT = Path(__file__).resolve().parents[2]
     args = argparser.parse_args()
-    input_dir = ROOT / "results" / "gp1" / "eval" / args.i
-    output_dir = ROOT / "results" / "gp1" / "eval" / args.o
+    input_dir = ROOT / "results" / "gp1" / "eval" / f"{args.sc}-{args.id}"
+    output_dir = ROOT / "results" / "gp1" / "eval" / f"{args.sc}-{args.id}"
     print(f"-i:{str(input_dir)}\n-o:{str(output_dir)}")
     video_name = args.video_name
     if not output_dir.exists():

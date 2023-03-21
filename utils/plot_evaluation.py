@@ -26,7 +26,7 @@ ROOT = Path(__file__).parent.parent
 
 def plot_single_image(parsed,FILE,actors_states_list:list,i:int, time_steps:int, s_e, o_d_r, o_d_l,save_path,eval_mode=False):
     plt.rc('font',family='Times New Roman',size=font1['size'])
-    fig,ax = plt.subplots(1,1,figsize=(15,15))
+    fig,ax = plt.subplots(1,1,figsize=(15,15),dpi=100)
     ax,_,_,_=plot_road_graph(parsed,ax,s_e, o_d_r, o_d_l,eval_mode=eval_mode)
     ax_title = f"Time step: {i} of {time_steps}\n"
     for actor_state in actors_states_list:
