@@ -178,7 +178,7 @@ if __name__ == '__main__':
             fileprefix = FILE.split('-')[0]
             RESULT_FILENAME = f'{fileprefix}_{FILENUM}_2023-{args.result_time}_tag.json'
             parsed = parsing_data(DATA_DIR,FILE,eval_mode=args.eval_mode)
-            main_plot(args,parsed,FILE,RESULT_DIR,RESULT_FILENAME,fileprefix,args.filenum)
+            main_plot(args,parsed,FILE,RESULT_DIR,RESULT_FILENAME,fileprefix,FILENUM)
 
 
     elif  args.eval_mode and args.filenum:
