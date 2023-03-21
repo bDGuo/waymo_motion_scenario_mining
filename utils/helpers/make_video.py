@@ -1,8 +1,10 @@
-from pathlib import Path
-import cv2
 import argparse
 import sys
+from pathlib import Path
+
+import cv2
 from rich.progress import track
+
 sys.path.append(str(Path(__file__).resolve().parents[2]))
 from utils.parameters.tag_parameters import sampling_frequency
 

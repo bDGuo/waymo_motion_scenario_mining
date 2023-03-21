@@ -1,9 +1,9 @@
 
+from typing import Tuple
+
 import numpy as np
-from typing import Dict,Tuple
-from helpers.create_rect_from_file import get_parsed_data, get_parsed_carla_data
-from shapely.geometry import LineString,Polygon,Point,MultiPolygon
-from pathlib import Path
+from shapely.geometry import LineString, Polygon, Point
+
 
 class EnvironmentElementsWaymo:
     """

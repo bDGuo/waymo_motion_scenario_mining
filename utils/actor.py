@@ -1,13 +1,14 @@
 # Function to identify whether two rectangular interacted
 
 from abc import ABC
-import tensorflow as tf
-from scipy.interpolate import UnivariateSpline
+from math import cos, sin
+
 import numpy as np
 import pandas as pd
-from math import cos, pi, sin
-from shapely.geometry import LineString, Polygon, Point, MultiPolygon
+import tensorflow as tf
+from shapely.geometry import Polygon
 from shapely.ops import unary_union
+
 from logger.logger import *
 
 

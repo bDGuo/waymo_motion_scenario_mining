@@ -1,7 +1,6 @@
-from parameters.tags_dict import *
-from collections import Iterable
-import os
 import numpy as np
+
+from parameters.tags_dict import *
 
 
 class ScenarioMiner:

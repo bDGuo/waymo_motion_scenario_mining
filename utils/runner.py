@@ -3,18 +3,17 @@ Generate scenarios from a folder contains multiple WAYMO data records
 Author: Detian Guo
 Date: 04/11/2022
 """
-import time
-import re
-import json
 import argparse
-from tags_generator import TagsGenerator
-from scenario_miner import ScenarioMiner
-from scenario_categorizer import ScenarioCategorizer
-from rich.progress import track
-from logger.logger import *
+import json
+import re
+import time
 import traceback
-from helpers.wechatter import wechatter
-from parameters import *
+
+from rich.progress import track
+
+from logger.logger import *
+from scenario_miner import ScenarioMiner
+from tags_generator import TagsGenerator
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--eval_mode', action="store_true" ,help='[bool] True for evaluation mode')

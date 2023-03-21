@@ -1,7 +1,9 @@
+from typing import List
+
 import numpy as np
-from typing import List, Dict, Tuple, Union, Iterable, Any
-from parameters.tags_dict import *
+
 from parameters.scenario_categories import scenario_catalog
+from parameters.tags_dict import *
 
 
 class ScenarioCategorizer:

@@ -1,12 +1,11 @@
 
 import uuid
-from typing import List
+from cmath import pi
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import cm
 from matplotlib.patches import Rectangle
-from collections import OrderedDict
-from cmath import pi
 
 
 def create_figure_and_axes(size_pixels:int,axes_x=1,axes_y=1):

@@ -3,18 +3,17 @@ generate figures for scenarios
 Author:Detian Guo
 Date: 04/11/2022
 """
-from collections import OrderedDict
-import matplotlib.pyplot as plt
 import json
-import os
-import numpy as np
-from helpers.os_helpers import *
-from helpers.diverse_plot import plot_road_lines,create_figure_and_axes
+from collections import OrderedDict
+
+import matplotlib.pyplot as plt
+
 from environ_elements import EnvironmentElementsWaymo
-from helpers.create_rect_from_file import get_agent_list, actor_creator, get_parsed_data, get_parsed_carla_data
-from parameters.tags_dict import lo_act_dict,la_act_dict
+from helpers.create_rect_from_file import actor_creator, get_parsed_data, get_parsed_carla_data
+from helpers.diverse_plot import plot_road_lines
 from parameters.plot_parameters import *
 from parameters.tag_parameters import *
+from parameters.tags_dict import lo_act_dict, la_act_dict
 
 
 def plot_all_scenarios(DATADIR,FILE,FILENUM,RESULT_DIR,RESULT_FILENAME,RESULT_SOLO,FIGUREDIR,eval_mode=False):

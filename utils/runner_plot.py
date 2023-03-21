@@ -1,15 +1,12 @@
 # imports and global setting
 
-import os
-import time
 import argparse
-from plotting_scenarios import plot_all_scenarios
-from logger.logger import *
+import time
 import traceback
 from pathlib import Path
-from helpers.wechatter import wechatter
-import json
-import numpy as np
+
+from logger.logger import *
+from plotting_scenarios import plot_all_scenarios
 
 # working directory
 ROOT = Path(__file__).parent.parent

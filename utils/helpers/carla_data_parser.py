@@ -1,6 +1,6 @@
-import numpy as np
 import pickle
-from pathlib import Path
+
+import numpy as np
 
 num_time_steps = 1 # default value
 

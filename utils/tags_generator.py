@@ -1,14 +1,15 @@
 # imports and global setting
 
-import numpy as np
 from collections import namedtuple
+
+from shapely.ops import unary_union
+
+from environ_elements import EnvironmentElementsWaymo
 from helpers.create_rect_from_file import get_agent_list, actor_creator, get_parsed_data, get_parsed_carla_data
 from helpers.helper_func import exchange_key_value
-from shapely.ops import unary_union
-from environ_elements import EnvironmentElementsWaymo
-from long_act_detector import LongActDetector
 from lateral_act_detector import LatActDetector
 from logger.logger import *
+from long_act_detector import LongActDetector
 from parameters.tag_parameters import *
 from parameters.tags_dict import *
 

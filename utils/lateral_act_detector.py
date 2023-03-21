@@ -1,11 +1,12 @@
-from data_preprocessing import univariate_spline
-from math import pi
 import os
+
+from data_preprocessing import univariate_spline
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from actor import Actor
 import numpy as np
-from typing import List,Tuple
+from typing import Tuple
 from parameters.tags_dict import la_act_dict
 
 class LatActDetector:

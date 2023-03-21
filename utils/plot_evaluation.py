@@ -3,20 +3,21 @@ generate figures for evaluation using CARLA data
 Author:Detian Guo
 Date: 04/11/2022
 """
-from collections import namedtuple,OrderedDict
+from collections import namedtuple, OrderedDict
 from pathlib import Path
+
 import matplotlib
+
 matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 from rich.progress import track
-import numpy as np
 import json
 import argparse
 from plotting_scenarios import get_color_map,plot_road_graph
 from environ_elements import EnvironmentElementsWaymo
 from parameters.plot_parameters import *
 from parameters.tag_parameters import TTC_2, sampling_frequency,bbox_extension
-from helpers.create_rect_from_file import get_agent_list, get_parsed_data, get_parsed_carla_data, actor_creator
+from helpers.create_rect_from_file import get_parsed_data, get_parsed_carla_data, actor_creator
 import re
 from parameters.tags_dict import TagDict
 
