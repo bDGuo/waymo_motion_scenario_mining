@@ -475,8 +475,8 @@ class TagsGenerator:
         position_relation_vector = np.array(
             [x_2 - x_1, y_2 - y_1])
         heading_vector = np.array([np.cos(theta_1), np.sin(theta_1)])
-        cos_ = np.dot(position_relation_vector, heading_vector) / (np.linalg.norm(position_relation_vector))
-        sin_ = np.cross(position_relation_vector, heading_vector) / (np.linalg.norm(position_relation_vector))
+        cos_ = np.dot(heading_vector, position_relation_vector) / (np.linalg.norm(position_relation_vector) * np.linalg.norm(heading_vector))
+        sin_ = np.cross(heading_vector, position_relation_vector) / (np.linalg.norm(position_relation_vector) * np.linalg.norm(heading_vector))
         relative_angle = np.arctan2(sin_, cos_)
         # np.arctan2 (-pi,pi]
         if -0.25 * np.pi < relative_angle <= 0.25 * np.pi:
