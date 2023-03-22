@@ -80,10 +80,10 @@ class LatActDetector:
         iter_yaw_valid_rate = enumerate(bbox_yaw_valid_rate)
         for i,yaw_rate in iter_yaw_valid_rate:
             # too small yaw_rate is taken as going straight
-            # if np.abs(yaw_rate) <= threshold:
-            #     continue
+            if np.abs(yaw_rate) <= threshold:
+                continue
             # counter clock-wise is turning left and the yaw_rate is positive
-            yaw_rate_dir = np.sign(yaw_rate) # 1 for left, -1 for right
+            yaw_rate_dir = np.sign(yaw_rate) # 1 for left, -1 for right, 0 for straight
 
             t_end,value = self.__end_lateral_activity(bbox_yaw_valid_rate[i:],threshold,yaw_rate_dir,intgr_threshold_turn,intgr_threshold_swerv,t_s,i)
             la_act_valid[i:i+t_end] = yaw_rate_dir*value
@@ -106,7 +106,7 @@ class LatActDetector:
         #   value: 1 for turn, 2 for swerve
         integration_yaw_rate = 0
         index_small_yaw_rate = np.where(np.abs(future_yaw_valid_rate) <= threshold)[0]
-        index_opposite_yaw_rate = np.where(future_yaw_valid_rate*current_yaw_dir < 0)[0]
+        index_opposite_yaw_rate = np.where(future_yaw_valid_rate*current_yaw_dir <= 0)[0]
 
         index_nearest_small_yaw_rate = index_small_yaw_rate[0]     if len(index_small_yaw_rate) else 0
         index_nearest_opposite_yaw_rate = index_opposite_yaw_rate[0] if len(index_opposite_yaw_rate) else 0
