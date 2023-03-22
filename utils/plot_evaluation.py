@@ -65,10 +65,10 @@ def plot_single_image(parsed,FILE,actors_states_list:list,i:int, time_steps:int,
     fig.legend(by_label.values(),by_label.keys(),loc='upper center',ncol=3,fontsize=font1['size'])
     if not FILE.startswith('Signalized'):
         ax.set_xlim(0,150)
-        ax.set_ylim(110,150)
+        ax.set_ylim(-150,-110)
     else:
         ax.set_xlim(-160,0)
-        ax.set_ylim(100,150)
+        ax.set_ylim(-150,-110)
     ax.set_title(ax_title)
     plt.savefig(save_path,bbox_inches='tight',dpi=300)
     plt.close()
