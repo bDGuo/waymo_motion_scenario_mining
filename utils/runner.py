@@ -17,7 +17,9 @@ from tags_generator import TagsGenerator
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--eval_mode', action="store_true" ,help='[bool] True for evaluation mode')
+parser.add_argument('--specified_file', type=str, required=False, help='specify a data to process')
 eval_mode = parser.parse_args().eval_mode
+specified_file = parser.parse_args().specified_file
 # working directory 
 # resolve() is to get the absolute path
 ROOT = Path(__file__).resolve().parent.parent
@@ -43,6 +45,8 @@ if __name__ == '__main__':
     for DATA_PATH in track(DATA_DIR_WALK, description="Processing files"):
         FILE = DATA_PATH.name
         if not FILE.endswith(".pkl") or FILE.endswith(".jpg"):
+            continue
+        if specified_file and specified_file != FILE:
             continue
         FILENUM = re.search(r"-(\d{5})-", FILE)
         if FILENUM is not None:
