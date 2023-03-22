@@ -53,7 +53,7 @@ class LongActDetector:
         # [1,time_steps=91]
         (long_v1,_) = rect.cordinate_rotate(rect.kinematics['velocity_x'],\
                                         rect.kinematics['velocity_y'],\
-                                        rect.kinematics['vel_yaw'])
+                                        rect.kinematics['bbox_yaw'])
         
         long_v,knots = univariate_spline(long_v1,valid,k,smoothing_factor)
         # correct the abnormal data with max acc/dec = 0.7m/s2
