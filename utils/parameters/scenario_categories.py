@@ -67,8 +67,8 @@ class Car2CarFrontTurn(SCBasis):
     #####   guest actor  #####
     guest_actor_type = ["vehicle"]
     guest_actor_tag = {
-        "lo_act": ['accelerating', 'cruising', 'decelerating'],
-        "la_act": ['swerving left', 'swerving right', 'going straight','standing still'],
+        "lo_act": ['accelerating', 'cruising', 'decelerating','standing still'],
+        "la_act": ['swerving left', 'swerving right', 'going straight'],
         "road_relation": [],
         "road_type": [],
         "inter_actor_relation": [],
