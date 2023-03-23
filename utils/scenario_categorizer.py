@@ -23,7 +23,6 @@ class ScenarioCategorizer:
         """
         Input: Scenario category ID, e.g. SC1
         Output: actor ID, start time and end time
-        TODO: start with SC1
         """
         SC = self.scenario_catalog[scenario_category_ID]
         SC_result = {}
@@ -34,11 +33,12 @@ class ScenarioCategorizer:
                 #####   encode host environment relation   #####
                 time_stamp *= self._check_actor_envr_relation(SC, host_actor_type, host_actor_id, time_stamp)
                 #  early jump to the next host actor
-                if not np.any(np.where(time_stamp == 1)[0]) or len(np.where(time_stamp == 1)[0]) < 5:
+                if not np.any(np.where(time_stamp == 1)[0]):
                     continue
                 if not len(SC.guest_actor_type):
                     #####   result #####
                     SC_count += 1
+                    time_stamp = np.where(time_stamp == 1)[0]
                     SC_result[SC_count] = {
                         'SC_ID': scenario_category_ID,
                         'host_actor': host_actor_id,
@@ -72,7 +72,7 @@ class ScenarioCategorizer:
                     #####    guest_actor   #####
                     guest_actor_type, guest_actor_id = guest_actor.split('_')
                     #####   check guest_actor type    #####
-                    if (guest_actor_type in SC.guest_actor_type) is False or len(np.where(time_stamp == 1)[0]) < 5:
+                    if (guest_actor_type in SC.guest_actor_type) is False:
                         continue
                     #####   encode guest_actor lo_act    #####
                     lo_tag_encoded_g = self.tag_encoder(SC, self.actors_activity[guest_actor_type][
@@ -82,12 +82,13 @@ class ScenarioCategorizer:
                         f'{guest_actor}_activity']['la_act'], 'la_act', host=False)
                     time_stamp *= lo_tag_encoded_g * la_tag_encoded_g
                     #  early jump to the next guest actor
-                    if not np.any(np.where(time_stamp == 1)[0]) or len(np.where(time_stamp == 1)[0]) < 5:
+                    if not np.any(np.where(time_stamp == 1)[0]):
                         continue
                     #####   encode guest_actor road_relation #####
                     # TODO: Currently not needed by SC1, SC11
                     #####   result #####
                     SC_count += 1
+                    time_stamp = np.where(time_stamp == 1)[0]
                     SC_result[SC_count] = {
                         'SC_ID': scenario_category_ID,
                         'host_actor': host_actor_id,
