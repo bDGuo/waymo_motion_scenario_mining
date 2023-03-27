@@ -44,9 +44,10 @@ if __name__ == '__main__':
     time_start = time.perf_counter()
     for DATA_PATH in track(DATA_DIR_WALK, description="Processing files"):
         FILE = DATA_PATH.name
-        if not FILE.endswith(".pkl") or FILE.endswith(".jpg"):
+        if eval_mode and not FILE.endswith(".pkl"):
             continue
         if specified_file and specified_file != FILE:
+            print(f"Skipping file: {FILE}")
             continue
         FILENUM = re.search(r"-(\d{5})-", FILE)
         if FILENUM is not None:
