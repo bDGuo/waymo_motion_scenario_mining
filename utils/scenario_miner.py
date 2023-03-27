@@ -69,7 +69,7 @@ class ScenarioMiner:
                         elif handel == 'relation':
                             inter_actor_dict = inter_actor_relation_dict
                         else:
-                            inter_actor_dict = inter_actor_vel_dir_dict
+                            inter_actor_dict = inter_actor_heading_dict
                         try:
                             solo_scenarios[actor_type][agent_key]['inter_actor'][actor_name][
                                 handel] = self.__summarizing_events(value, turning_points, valid_start, valid_end,
