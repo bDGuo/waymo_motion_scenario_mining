@@ -40,6 +40,7 @@ inter_actor_relation_dict = {
 "3":"estimated collision+close proximity"
 }
 inter_actor_position_dict = {
+"-1":"unknown",
 "0":"not related",
 "1":"front",
 "2":"left",
@@ -47,7 +48,8 @@ inter_actor_position_dict = {
 "4":"back"
 }
 
-inter_actor_vel_dir_dict = {
+inter_actor_heading_dict = {
+"-1":"unknown",
 "0":"not related",
 "1":"same",
 "2":"left",
@@ -83,7 +85,7 @@ TagDict={
     'inter_actor_position' : inter_actor_position_dict,
     'inter_actor_lane_id' : inter_actor_lane_id_dict,
     'light_state' : light_state_dict,
-    'inter_actor_vel_dir' : inter_actor_vel_dir_dict,
+    'inter_actor_heading' : inter_actor_heading_dict,
 }
 
 def reverse_k_v(dict):
