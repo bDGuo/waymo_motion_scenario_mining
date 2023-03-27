@@ -70,9 +70,10 @@ def parse_carla_data(data_path):
         data.update(traffic_light_features)
         # data['state/length'][0,:] = 4.2
         # data['state/width'][0,:] = 1.8
-        # data['state/bbox_yaw'][0,:] *= np.pi / 180
-        # data['state/vel_yaw'][0,:] *= np.pi / 180
-        # data['state/bbox_yaw'][1,:] *= np.pi / 180
-        # data['state/vel_yaw'][1,:] *= np.pi / 180
+        # TODO:comment out the following line if you use CARLA data generated later than 22.03.2023
+        data['state/bbox_yaw'][0,:] *= np.pi / 180
+        data['state/vel_yaw'][0,:] *= np.pi / 180
+        data['state/bbox_yaw'][1,:] *= np.pi / 180
+        data['state/vel_yaw'][1,:] *= np.pi / 180
         return data
 
