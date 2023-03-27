@@ -23,7 +23,7 @@ class SCBasis():
         "road_type": [],
         "inter_actor_relation": [],
         "inter_actor_position": [],
-        'inter_actor_vel_dir': [],
+        'inter_actor_heading': [],
     }
     #####   guest actor  #####
     guest_actor_type = []
@@ -34,7 +34,7 @@ class SCBasis():
         "road_type": [],
         "inter_actor_relation": [],
         "inter_actor_position": [],
-        'inter_actor_vel_dir': [],
+        'inter_actor_heading': [],
     }
     envr_tag = {
         'light_state': []
@@ -56,24 +56,24 @@ class Car2CarFrontTurn(SCBasis):
     #####   host actor  #####
     host_actor_type = ["vehicle"]
     host_actor_tag = {
-        "lo_act": ['accelerating', 'cruising', 'decelerating','standing still'],  # forward
+        "lo_act": ['accelerating', 'cruising', 'decelerating'],  # forward
         'la_act': ['turning left'],
         "road_relation": [],
         "road_type": [],
         "inter_actor_relation": ['estimated collision', "close proximity", "estimated collision+close proximity"],
         "inter_actor_position": ['front'],
-        'inter_actor_vel_dir': ['opposite']
+        'inter_actor_heading': ['opposite']
     }
     #####   guest actor  #####
     guest_actor_type = ["vehicle"]
     guest_actor_tag = {
-        "lo_act": ['accelerating', 'cruising', 'decelerating','standing still'],
+        "lo_act": ['accelerating', 'cruising', 'decelerating'],
         "la_act": ['swerving left', 'swerving right', 'going straight'],
         "road_relation": [],
         "road_type": [],
         "inter_actor_relation": [],
         "inter_actor_position": [],
-        'inter_actor_vel_dir': []
+        'inter_actor_heading': []
     }
 
 
@@ -115,7 +115,7 @@ class Car2CarFrontHeadon(SCBasis):
         "road_type": [],
         "inter_actor_relation": ['estimated collision', 'close proximity', "estimated collision+close proximity"],
         "inter_actor_position": ['front'],
-        'inter_actor_vel_dir': ['opposite']
+        'inter_actor_heading': ['opposite']
     }
     #####   guest actor  #####
     guest_actor_type = ["vehicle"]
@@ -153,13 +153,13 @@ class Car2CarCrossStraight(SCBasis):
     #####   host actor  #####
     host_actor_type = ["vehicle"]
     host_actor_tag = {
-        "lo_act": ['accelerating', 'cruising', 'decelerating','standing still'],  # forward
+        "lo_act": ['accelerating', 'cruising', 'decelerating'],  # forward
         'la_act': ['swerving left', 'swerving right', 'going straight'],
         "road_relation": [],
         "road_type": [],
         "inter_actor_relation": ['estimated collision', 'close proximity', "estimated collision+close proximity"],
         "inter_actor_position": ['front'],
-        'inter_actor_vel_dir': []
+        'inter_actor_heading': ['left','right']
     }
     #####   guest actor  #####
     guest_actor_type = ["vehicle"]
@@ -227,7 +227,7 @@ class Car2BycPassingby(SCBasis):
         "road_type": [],
         "inter_actor_relation": ['close proximity', "estimated collision+close proximity"],
         "inter_actor_position": ['left','right'],
-        'inter_actor_vel_dir': ['same']
+        'inter_actor_heading': ['same']
     }
     #####   guest actor  #####
     guest_actor_type = ["cyclist"]
