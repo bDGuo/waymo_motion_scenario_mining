@@ -4,7 +4,7 @@ import numpy as np
 
 from parameters.scenario_categories import scenario_catalog
 from parameters.tags_dict import *
-
+from logger.logger import *
 
 class ScenarioCategorizer:
     """
@@ -38,17 +38,19 @@ class ScenarioCategorizer:
                 if not len(SC.guest_actor_type):
                     #####   result #####
                     SC_count += 1
-                    time_stamp = np.where(time_stamp == 1)[0]
+                    time_stamp_result = np.where(time_stamp == 1)[0]
                     SC_result[SC_count] = {
                         'SC_ID': scenario_category_ID,
                         'host_actor': host_actor_id,
                         'guest_actor': "None",
                         'envr_type': SC.host_actor_tag['road_type'] if len(SC.host_actor_tag['road_type']) else "None",
-                        'time_stamp': time_stamp.tolist()
+                        'time_stamp': time_stamp_result.tolist()
                     }
+                    SC_result = {}
                     continue
                 #####   check guest actor   #####
                 for guest_actor in self.inter_actor_relation[f'{host_actor_type}_{host_actor_id}'].keys():
+                    time_stamp_g = np.zeros_like(time_stamp)
                     #####   encode inter_actor_relation and position  #####                    
                     relation_tag_encoded_h = self.tag_encoder(SC,
                                                               self.inter_actor_relation[
@@ -60,14 +62,14 @@ class ScenarioCategorizer:
                                                                    f'{host_actor_type}_{host_actor_id}'][guest_actor][
                                                                    'position'],
                                                                'inter_actor_position')
-                    v_dir_tag_encoded_h = self.tag_encoder(SC,
+                    heading_tag_encoded_h = self.tag_encoder(SC,
                                                            self.inter_actor_relation[
                                                                 f'{host_actor_type}_{host_actor_id}'][guest_actor][
-                                                                'v_dir'],
-                                                            'inter_actor_vel_dir')
-                    time_stamp *= v_dir_tag_encoded_h * relation_tag_encoded_h * position_tag_encoded_h
-                    #   early jump to the next guest actor
-                    if not np.any(np.where(time_stamp == 1)[0]):
+                                                                'heading'],
+                                                            'inter_actor_heading')
+                    time_stamp_g = heading_tag_encoded_h * relation_tag_encoded_h * position_tag_encoded_h
+                   #   early jump to the next guest actor
+                    if not np.any(np.where(time_stamp_g == 1)[0]):
                         continue
                     #####    guest_actor   #####
                     guest_actor_type, guest_actor_id = guest_actor.split('_')
@@ -80,22 +82,23 @@ class ScenarioCategorizer:
                     #####   encode guest_actor la_act    #####
                     la_tag_encoded_g = self.tag_encoder(SC, self.actors_activity[guest_actor_type][
                         f'{guest_actor}_activity']['la_act'], 'la_act', host=False)
-                    time_stamp *= lo_tag_encoded_g * la_tag_encoded_g
+                    time_stamp_g *= lo_tag_encoded_g * la_tag_encoded_g
                     #  early jump to the next guest actor
-                    if not np.any(np.where(time_stamp == 1)[0]):
+                    if not np.any(np.where(time_stamp_g == 1)[0]):
                         continue
-                    #####   encode guest_actor road_relation #####
-                    # TODO: Currently not needed by SC1, SC11
                     #####   result #####
                     SC_count += 1
-                    time_stamp = np.where(time_stamp == 1)[0]
+                    time_stamp *= time_stamp_g
+                    logger.error(f"Error in {self.FILENUM}, host:{host_actor_id},guest:{guest_actor}:\ntime_stamp:{time_stamp}\n,time_stamp_g:{time_stamp_g}")
+                    time_stamp_result = np.where(time_stamp == 1)[0]
                     SC_result[SC_count] = {
                         'SC_ID': scenario_category_ID,
                         'host_actor': host_actor_id,
                         'guest_actor': guest_actor_id,
                         'envr_type': SC.host_actor_tag['road_type'] if len(SC.host_actor_tag['road_type']) else "None",
-                        'time_stamp': time_stamp.tolist()
+                        'time_stamp': time_stamp_result.tolist()
                     }
+                    SC_result = {}
 
         return SC_result
 
