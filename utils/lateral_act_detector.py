@@ -69,7 +69,7 @@ class LatActDetector:
         bbox_yaw_valid = bbox_yaw[valid[0]:valid[-1]+1].copy()
         bbox_yaw_valid_rate = self.__compute_yaw_rate(bbox_yaw_valid,t_s)
         bbox_yaw_rate[valid[0]:valid[-1]+1] = bbox_yaw_valid_rate.copy()
-        bbox_yaw_rate,knots = univariate_spline(bbox_yaw_rate,valid,k,smoothing_factor)
+        # bbox_yaw_rate,knots = univariate_spline(bbox_yaw_rate,valid,k,smoothing_factor)
         bbox_yaw_valid_rate = bbox_yaw_rate[valid[0]:valid[-1]+1].copy()
 
         la_act_valid = la_act[valid[0]+1:valid[-1]+1].copy()
@@ -110,24 +110,39 @@ class LatActDetector:
 
         index_nearest_small_yaw_rate = index_small_yaw_rate[0]     if len(index_small_yaw_rate) else 0
         index_nearest_opposite_yaw_rate = index_opposite_yaw_rate[0] if len(index_opposite_yaw_rate) else 0
-
-        integration_nearest_small_yaw_rate = np.sum(future_yaw_valid_rate[:index_nearest_small_yaw_rate]) * t_s * current_yaw_dir
-        integration_nearest_opposite_yaw_rate = np.sum(future_yaw_valid_rate[:index_nearest_opposite_yaw_rate]) * t_s * current_yaw_dir
-
-
-        if integration_nearest_small_yaw_rate >= intgr_threshold_turn:
-            return index_nearest_small_yaw_rate,1
-        if integration_nearest_opposite_yaw_rate >= intgr_threshold_turn:
-            return index_nearest_opposite_yaw_rate,1
-        if integration_nearest_opposite_yaw_rate >= intgr_threshold_swerv:
-            return index_nearest_opposite_yaw_rate,2
-
-        if np.sum(future_yaw_valid_rate)*t_s* current_yaw_dir >= intgr_threshold_turn:
-            return len(future_yaw_valid_rate),1
-        elif np.sum(future_yaw_valid_rate)*t_s* current_yaw_dir >= intgr_threshold_swerv:
-            return len(future_yaw_valid_rate),2
+        index_end_la_act = min(index_nearest_small_yaw_rate,index_nearest_opposite_yaw_rate)
+        
+        # if the nearest t_end is the last sample
+        if index_end_la_act == 0:
+            if np.sum(future_yaw_valid_rate)*t_s* current_yaw_dir >= intgr_threshold_turn:
+                return len(future_yaw_valid_rate),1
+            elif np.sum(future_yaw_valid_rate)*t_s* current_yaw_dir >= intgr_threshold_swerv:
+                return len(future_yaw_valid_rate),2
+            else:
+                return 0,1
+        # nearest t_end is not the last sample
         else:
-            return 0,1
+            integration_t_c_t_end = np.sum(future_yaw_valid_rate[:index_end_la_act]) * t_s * current_yaw_dir
+            if integration_t_c_t_end >= intgr_threshold_turn:
+                return index_end_la_act,1
+            elif integration_t_c_t_end >= intgr_threshold_swerv:
+                return index_end_la_act,2
+            else:
+                return 0,1
+            
+
+        # integration_nearest_small_yaw_rate = np.sum(future_yaw_valid_rate[:index_nearest_small_yaw_rate]) * t_s * current_yaw_dir
+        # integration_nearest_opposite_yaw_rate = np.sum(future_yaw_valid_rate[:index_nearest_opposite_yaw_rate]) * t_s * current_yaw_dir
+
+
+        # if integration_nearest_small_yaw_rate >= intgr_threshold_turn:
+        #     return index_nearest_small_yaw_rate,1
+        # if integration_nearest_opposite_yaw_rate >= intgr_threshold_turn:
+        #     return index_nearest_opposite_yaw_rate,1
+        # if integration_nearest_opposite_yaw_rate >= intgr_threshold_swerv:
+        #     return index_nearest_opposite_yaw_rate,2
+
+
 
     def __compute_yaw_rate(self,bbox_yaw_valid, t_s):
         """
