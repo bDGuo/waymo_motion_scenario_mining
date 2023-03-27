@@ -44,8 +44,9 @@ class TagsGenerator:
         # [actor_type][actor_id][lane_type][expanded/trajectory],value is a list of area of intersection
         actors_environment_element_intersection = {}
         actors_list = {}  # [actor_type]
-        AgentExtendedPolygons = namedtuple('AgentExtendedPolygons', 'type,key,etp,ebb,length,x,y,theta,v_dir')
+        AgentExtendedPolygons = namedtuple('AgentExtendedPolygons', 'type,key,etp,ebb,length,x,y,theta')
         agent_pp_state_list = []
+        sampling_threshold = 0.0 # default value
         for actor_type in actor_dict:
             agent_type = actor_dict[actor_type]
             # TODO: align with the carla data parser
@@ -107,10 +108,9 @@ class TagsGenerator:
                 x = agent_state.kinematics['x']
                 y = agent_state.kinematics['y']
                 theta = agent_state.kinematics['bbox_yaw']
-                v_dir = agent_state.kinematics['vel_yaw']
 
                 agent_extended_polygons = AgentExtendedPolygons(actor_type, agent_key, etp, ebb, time_steps, x, y,
-                                                                theta, v_dir)
+                                                                theta)
                 agent_pp_state_list.append(agent_extended_polygons)
                 ##########      other properties    ###########
                 agent_activity['valid'] = np.array([valid_start, valid_end], dtype=np.float32).tolist()
@@ -285,6 +285,9 @@ class TagsGenerator:
         ########### inter actor relation ###########
         inter_actor_relation = self.__generate_inter_actor_relation(agent_pp_state_list)
         ########### general info ###########
+        tags_param.update({
+            'sampling_threshold':sampling_threshold,
+        })
         general_info = {
             'actors_list': actors_list,
             'tagging_parameters': tags_param,
@@ -429,7 +432,7 @@ class TagsGenerator:
                 agent_ebb_2 = agent_pp_state_2.ebb
                 relation = np.ones(length) * float(new_tag_dict['not related'])
                 position = np.ones(length) * float(new_tag_dict['not related'])
-                vel_dir = np.ones(length) * float(new_tag_dict['not related'])
+                heading_dir = np.ones(length) * float(new_tag_dict['not related'])
                 for step in range(length):
                     if agent_etp_1[step][0].area == 0 or agent_etp_2[step][0].area == 0:
                         continue
@@ -453,8 +456,8 @@ class TagsGenerator:
                                                                                 agent_pp_state_2.x[step],
                                                                                 agent_pp_state_2.y[step])
                         try:
-                            vel_dir[step] = self.compute_inter_actor_v_dir(agent_pp_state_1.v_dir[step],
-                                                                             agent_pp_state_2.v_dir[step])
+                            heading_dir[step] = self.compute_inter_actor_heading(agent_pp_state_1.theta[step],
+                                                                             agent_pp_state_2.theta[step])
                         except Exception as e:
                             raise ValueError(f"Error:{e}.\nAgent1: {agent_key_1}, Agent2: {agent_key_2}, Step: {step}.")
                         # compute the position relation
@@ -462,7 +465,7 @@ class TagsGenerator:
                     inter_actor_relation[agent_key_1][agent_key_2] = {}
                     inter_actor_relation[agent_key_1][agent_key_2]['relation'] = relation.tolist()
                     inter_actor_relation[agent_key_1][agent_key_2]['position'] = position.tolist()
-                    inter_actor_relation[agent_key_1][agent_key_2]['v_dir'] = vel_dir.tolist()
+                    inter_actor_relation[agent_key_1][agent_key_2]['heading'] = heading_dir.tolist()
 
         return inter_actor_relation
 
@@ -488,19 +491,22 @@ class TagsGenerator:
         elif np.pi >= relative_angle > 0.75 * np.pi or -np.pi <= relative_angle < -0.75 * np.pi:
             position_relation = new_tag_dict['back']  # back
         else:
-            raise ValueError(
+            logger.error(
                 f"Unexpected value:{relative_angle} ")
+            position_relation = new_tag_dict['unknown']
         return position_relation
 
-    def compute_inter_actor_v_dir(self, v_dir_1, v_dir_2):
+    def compute_inter_actor_heading(self, heading_1, heading_2):
         """
         compute the velocity direction relation between two agents
         refer the parameters.tag_dict for the meaning of the relation 
         """
-        new_tag_dict = exchange_key_value(inter_actor_vel_dir_dict)
-        v_dir_1_vector = np.array([np.cos(v_dir_1), np.sin(v_dir_1)])
-        v_dir_2_vector = np.array([np.cos(v_dir_2), np.sin(v_dir_2)])
-        v_relative_dir = np.arctan2(np.cross(v_dir_1_vector, v_dir_2_vector), np.dot(v_dir_1_vector, v_dir_2_vector))
+        new_tag_dict = exchange_key_value(inter_actor_heading_dict)
+        heading_1_vector = np.array([np.cos(heading_1), np.sin(heading_1)])
+        heading_2_vector = np.array([np.cos(heading_2), np.sin(heading_2)])
+        cos_ = np.dot(heading_1_vector, heading_2_vector) / (np.linalg.norm(heading_1_vector) * np.linalg.norm(heading_2_vector))
+        sin_ = np.cross(heading_1_vector, heading_2_vector) / (np.linalg.norm(heading_1_vector) * np.linalg.norm(heading_2_vector))
+        v_relative_dir = np.arctan2(sin_, cos_)
         if -0.25 * np.pi < v_relative_dir <= 0.25 * np.pi:
             vel_dir_relation = new_tag_dict['same']
         elif 0.25 * np.pi < v_relative_dir <= 0.75 * np.pi:
@@ -510,5 +516,6 @@ class TagsGenerator:
         elif np.pi >= v_relative_dir > 0.75 * np.pi or -np.pi <= v_relative_dir < -0.75 * np.pi:
             vel_dir_relation = new_tag_dict['opposite']
         else:
-            raise ValueError(f"Unexpected value v_relative_dir: {v_relative_dir}")
+            logger.error(f"Unexpected value v_relative_dir: {v_relative_dir}, heading_1: {heading_1}, heading_2: {heading_2}")
+            vel_dir_relation = new_tag_dict['unknown']
         return vel_dir_relation
