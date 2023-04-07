@@ -56,10 +56,6 @@ class LongActDetector:
                                         rect.kinematics['bbox_yaw'])
         
         long_v,knots = univariate_spline(long_v1,valid,k,smoothing_factor)
-        # correct the abnormal data with max acc/dec = 0.7m/s2
-        # long_v = clean_abnormal_data(long_v,valid,t_s,max_acc=max_acc)
-        # assert len(long_v)>0
-        # print(valid[-1])
         lo_act,long_v = self.__long_act_detector_core(long_v,long_v1,valid,rect,k_h,t_s,a_cruise,time_steps,delta_v,k_cruise)
         return lo_act,long_v,long_v1,knots
 
