@@ -14,25 +14,38 @@ from rich.progress import track
 from logger.logger import *
 from scenario_miner import ScenarioMiner
 from tags_generator import TagsGenerator
+from warnings import simplefilter
+simplefilter('error')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--eval_mode', action="store_true" ,help='[bool] True for evaluation mode')
+parser.add_argument('--ext_data',action="store_true" ,help='[bool] True for using external data')
 parser.add_argument('--specified_file', type=str, required=False, help='specify a data to process')
+parser.add_argument('--result_folder', type=str, required=False, help='result time to be categorized, e.g. 02-28-16_35')
+parser.add_argument('--start_file', type=str, required=False, help='start file to process')
 eval_mode = parser.parse_args().eval_mode
+ext_data = parser.parse_args().ext_data
+result_folder = parser.parse_args().result_folder
 specified_file = parser.parse_args().specified_file
+start_file = parser.parse_args().start_file
 # working directory 
 # resolve() is to get the absolute path
 ROOT = Path(__file__).resolve().parent.parent
 
 # modify the following two lines to your own data and result directory
 DATA_DIR = ROOT / "waymo_open_dataset" / "data" / "tf_example" / "training"
+if ext_data:
+    DATA_DIR = Path("E:/VRU_prediction_dataset/waymo")
 
 if eval_mode:
     DATA_DIR = ROOT / "waymo_open_dataset" / "data" / "eval_data" / "carla_data"
 
 DATA_DIR_WALK = DATA_DIR.iterdir()
-RESULT_TIME = time.strftime("%Y-%m-%d-%H_%M", time.localtime())
-RESULT_DIR = ROOT / "results/gp1" / RESULT_TIME
+if result_folder:
+    RESULT_TIME = f"2023-{result_folder}"
+else:
+    RESULT_TIME = time.strftime("%Y-%m-%d-%H_%M", time.localtime())
+RESULT_DIR = ROOT / "results" / "gp1" / RESULT_TIME
 if not RESULT_DIR.exists():
     RESULT_DIR.mkdir(exist_ok=True, parents=True)
 
