@@ -11,8 +11,7 @@ class ScenarioCategorizer:
     Categorizes the scenarios into 11 categories.
     """
 
-    def __init__(self, FILENUM: str, result_dict: dict):
-        self.FILENUM = FILENUM
+    def __init__(self, result_dict: dict):
         self.actors_list = result_dict['general_info']['actors_list']
         self.inter_actor_relation = result_dict['inter_actor_relation']
         self.actors_activity = result_dict['actors_activity']
@@ -46,7 +45,6 @@ class ScenarioCategorizer:
                         'envr_type': SC.host_actor_tag['road_type'] if len(SC.host_actor_tag['road_type']) else "None",
                         'time_stamp': time_stamp_result.tolist()
                     }
-                    SC_result = {}
                     continue
                 #####   check guest actor   #####
                 for guest_actor in self.inter_actor_relation[f'{host_actor_type}_{host_actor_id}'].keys():
@@ -84,22 +82,19 @@ class ScenarioCategorizer:
                         f'{guest_actor}_activity']['la_act'], 'la_act', host=False)
                     time_stamp_g *= lo_tag_encoded_g * la_tag_encoded_g
                     #  early jump to the next guest actor
-                    if not np.any(np.where(time_stamp_g == 1)[0]):
+                    if not np.any(np.where(time_stamp * time_stamp_g == 1)[0]):
                         continue
+                    else:
                     #####   result #####
-                    SC_count += 1
-                    time_stamp *= time_stamp_g
-                    logger.error(f"Error in {self.FILENUM}, host:{host_actor_id},guest:{guest_actor}:\ntime_stamp:{time_stamp}\n,time_stamp_g:{time_stamp_g}")
-                    time_stamp_result = np.where(time_stamp == 1)[0]
-                    SC_result[SC_count] = {
-                        'SC_ID': scenario_category_ID,
-                        'host_actor': host_actor_id,
-                        'guest_actor': guest_actor_id,
-                        'envr_type': SC.host_actor_tag['road_type'] if len(SC.host_actor_tag['road_type']) else "None",
-                        'time_stamp': time_stamp_result.tolist()
-                    }
-                    SC_result = {}
-
+                        SC_count += 1
+                        time_stamp_result = np.where(time_stamp * time_stamp_g == 1)[0]
+                        SC_result[SC_count] = {
+                            'SC_ID': scenario_category_ID,
+                            'host_actor': host_actor_id,
+                            'guest_actor': guest_actor_id,
+                            'envr_type': SC.host_actor_tag['road_type'] if len(SC.host_actor_tag['road_type']) else "None",
+                            'time_stamp': time_stamp_result.tolist()
+                        }
         return SC_result
 
     def _check_actor_envr_relation(self, SC, actor_type: str, actor_id: str, time_stamp, host: bool = True):
