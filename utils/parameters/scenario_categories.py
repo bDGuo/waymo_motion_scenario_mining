@@ -214,7 +214,7 @@ class CarViolateTrafficLight(SCBasis):
 @dataclass
 class Car2BycPassingby(SCBasis):
     #####   general info    #####
-    SC_ID = "SC13"
+    SC_ID = "SC_13"
     description = "The car and the bicyclist are going straight with a close proximity. The cyclist is on the left or right side to the car."
     source = ""
     source_file = ""
