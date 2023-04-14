@@ -184,7 +184,7 @@ if __name__ == '__main__':
     elif  args.eval_mode and args.filenum:
         DATADIR = ROOT / "waymo_open_dataset" / "data" / "eval_data" / "carla_data"
         RESULT_DIR = ROOT / "results" / "gp1" / f"2023-{args.result_time}"
-        fileprefix = "BikePassingby"
+        fileprefix = "SignalizedJunctionLeftTurn"
         FILE = f"{fileprefix}-{args.filenum}-of-00010.pkl"
         RESULT_FILENAME = f'{fileprefix}_{args.filenum}_2023-{args.result_time}_tag.json'
         parsed = parsing_data(DATADIR,FILE,eval_mode=args.eval_mode)
