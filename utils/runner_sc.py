@@ -4,7 +4,7 @@ import traceback
 
 import argparse
 from logger.logger import *
-from parameters.scenario_categories import scenario_catalog
+from rich.progress import track
 from scenario_categorizer import ScenarioCategorizer
 
 # working directory
@@ -17,16 +17,18 @@ args = parser.parse_args()
 RESULT_TIME = args.result_time
 RESULT_DIR = ROOT / "results/gp1" / f"2023-{RESULT_TIME}"
 file_prefix = "Waymo" if not args.eval_mode else "Carla"
-for file in RESULT_DIR.iterdir():
+
+sc = ["SC1","SC7","SC13"]
+
+for file in track(RESULT_DIR.iterdir(),description="Categorizing..."):
     if not file.name.endswith("tag.json"):
         continue
     filenum = file.name.split("_")[1]
-    print(file.name)
     RESULT_FILE = file
     result_dict = json.load(open(RESULT_FILE, 'r'))
     file_prefix = file.name.split("_")[0] if args.eval_mode else "Waymo"
-    scenario_categorizer = ScenarioCategorizer(filenum, result_dict)
-    for SC_ID in ["SC1","SC7","SC13"]:
+    scenario_categorizer = ScenarioCategorizer(result_dict)
+    for SC_ID in sc:
         try:
             SC_ID_dict = scenario_categorizer.find_SC(SC_ID)
             if not len(SC_ID_dict):
