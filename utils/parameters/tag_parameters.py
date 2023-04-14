@@ -5,7 +5,7 @@ import numpy as np
 TTC_1 = 3
 # parameter for estimation of two actors' interaction
 TTC_2 = 5
-sampling_frequency = 20
+sampling_frequency = 10
 
 max_acc = [0,0.7,0.2,0.4,0]
 a_cruise = [0,0.3,0.1,0.2,0]
