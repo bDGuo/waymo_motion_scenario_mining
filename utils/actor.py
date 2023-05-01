@@ -148,23 +148,19 @@ class Actor(ABC):
         result[valid[0]:valid[-1] + 1] = temp
         return result.astype(np.float32)
 
-    def __instant_polygon(self, x: float, y: float, yaw_angle: float, length: float, width: float):
+    def instant_polygon(self, x: float, y: float, yaw_angle: float, length: float, width: float):
         """
         actor polygon at every time step
         """
-        diagnol = np.sqrt(length ** 2 + width ** 2)
         polygon_coordinates = [
-            (x + length / 2, y - width / 2),
-            (x + length / 2, y + width / 2),
-            (x - length / 2, y + width / 2),
-            (x - length / 2, y - width / 2)
+            (length / 2, - width / 2),
+            (length / 2,  width / 2),
+            (-length / 2, width / 2),
+            (-length / 2, -width / 2)
         ]
         for i in range(4):
-            new_x = cos(yaw_angle) * (polygon_coordinates[i][0] - x) - sin(yaw_angle) * (
-                        polygon_coordinates[i][1] - y) + x
-            new_y = sin(yaw_angle) * (polygon_coordinates[i][0] - x) + cos(yaw_angle) * (
-                        polygon_coordinates[i][1] - y) + y
-            polygon_coordinates[i] = (new_x, new_y)
+            new_x,new_y = self.cordinate_rotate(polygon_coordinates[i][0],polygon_coordinates[i][1],-yaw_angle)
+            polygon_coordinates[i] = (new_x+x, new_y+y)
         return Polygon(polygon_coordinates)
 
     def get_validity_range(self):
@@ -187,7 +183,7 @@ class Actor(ABC):
             if i in mask_:
                 polygon_set.append(Polygon([(0, 0), (0, 0), (0, 0), (0, 0)]))
             else:
-                polygon_set.append(self.__instant_polygon(x_[i], y_[i], yaw_[i], length_[i], width_[i]))
+                polygon_set.append(self.instant_polygon(x_[i], y_[i], yaw_[i], length_[i], width_[i]))
         return polygon_set
     
     def set_yaw_rate(self, yaw_rate):
@@ -229,7 +225,7 @@ class Actor(ABC):
                     new_y_ = y_[i] + j / sampling_fq * radius * ( - np.cos(new_theta_) + np.cos(yaw_[i]) )
                     # project new_theta_ to (-pi,pi)
                     new_theta_ = self.__project_angel(new_theta_)
-                    expanded_polygon.append(self.__instant_polygon(new_x_, new_y_, new_theta_, length_[i], width_[i]))
+                    expanded_polygon.append(self.instant_polygon(new_x_, new_y_, new_theta_, length_[i], width_[i]))
                     expanded_all_polygon.append(expanded_polygon[j - 1])
                 # expanded_polygon_set.append(MultiPolygon(expanded_polygon))
                 expanded_polygon_set.append(unary_union(expanded_polygon).buffer(0.01))
@@ -250,7 +246,7 @@ class Actor(ABC):
                 expanded_bbox_list.append(Polygon([(0, 0), (0, 0), (0, 0), (0, 0)]))
                 self.expanded_bboxes.append(Polygon([(0, 0), (0, 0), (0, 0), (0, 0)]))
             else:
-                expanded_bbox = self.__instant_polygon(x_[i], y_[i], yaw_[i], expand * length_[i], expand * width_[i])
+                expanded_bbox = self.instant_polygon(x_[i], y_[i], yaw_[i], expand * length_[i], expand * width_[i])
                 expanded_bbox_list.append(expanded_bbox)
                 self.expanded_bboxes.append(expanded_bbox)
         return expanded_bbox_list
