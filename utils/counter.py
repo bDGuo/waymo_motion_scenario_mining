@@ -96,7 +96,7 @@ class Counter:
                 count.loc[(event, '6-e'), actor_type] += 1
         return count
 
-    def __init_counter_sc(self):
+    def __init_counter_sc(self) -> pd.DataFrame:
         counter = pd.DataFrame(np.zeros((len(self.time), 4)),
                                columns=["SC1", "SC7", "SC13", "time"])
         counter.loc[:, "time"] = self.time
