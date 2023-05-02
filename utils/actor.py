@@ -219,10 +219,12 @@ class Actor(ABC):
                     new_theta_ = yaw_[i] + j / sampling_fq * yaw_rate[i]
                     if yaw_rate[i] != 0:
                         radius = np.sqrt(vx_[i] ** 2 + vy_[i] ** 2) / yaw_rate[i]
+                        new_x_ = x_[i] + radius * ( np.sin(new_theta_) - np.sin(yaw_[i]) )
+                        new_y_ = y_[i] + radius * ( - np.cos(new_theta_) + np.cos(yaw_[i]) )
                     else:
-                        radius = 0
-                    new_x_ = x_[i] + j / sampling_fq * radius * ( np.sin(new_theta_) - np.sin(yaw_[i]) )
-                    new_y_ = y_[i] + j / sampling_fq * radius * ( - np.cos(new_theta_) + np.cos(yaw_[i]) )
+                        # for the case of yaw_rate = 0, constant velocity model is used
+                        new_x_ = x_[i] + j / sampling_fq * vx_[i]
+                        new_y_ = y_[i] + j / sampling_fq * vy_[i]
                     # project new_theta_ to (-pi,pi)
                     new_theta_ = self.__project_angel(new_theta_)
                     expanded_polygon.append(self.instant_polygon(new_x_, new_y_, new_theta_, length_[i], width_[i]))
