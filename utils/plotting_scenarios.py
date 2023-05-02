@@ -19,7 +19,7 @@ from parameters.tags_dict import lo_act_dict, la_act_dict
 def plot_all_scenarios(DATADIR,FILE,FILENUM,RESULT_DIR,RESULT_FILENAME,RESULT_SOLO,FIGUREDIR,eval_mode=False):
     FIG_PATH = FIGUREDIR / FILENUM
     if not FIG_PATH.exists():
-        FIG_PATH.mkdir()
+        FIG_PATH.mkdir(exist_ok=True, parents=True)
     result = json.load(open(RESULT_DIR / RESULT_FILENAME,'r'))
     solo_scenarios = json.load(open(RESULT_DIR/RESULT_SOLO,'r'))
     actors_list = result['general_info']['actors_list']
@@ -44,11 +44,11 @@ def plot_all_scenarios(DATADIR,FILE,FILENUM,RESULT_DIR,RESULT_FILENAME,RESULT_SO
             agent_state,_ = actor_creator(actor_type,agent,parsed,eval_mode=eval_mode)
             val_proportion = agent_state.data_preprocessing()
             solo_scenario = solo_scenarios[actor_type][f"{actor_type}_{agent}"]
-            _=plot_solo_scenario(f"{actor_type}_{agent}",agent_activity,agent_interalation,agent_state,parsed,solo_scenario,AGENT_FIG_PATH,\
+            _=plot_solo_scenario(f"{actor_type}_{agent}",agent_activity,actors_activity,agent_interalation,agent_state,parsed,solo_scenario,AGENT_FIG_PATH,\
                 environment_element,original_data_roadgragh,original_data_light,eval_mode=eval_mode)
     return 0
 
-def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,parsed,solo_scenario,AGENT_FIG_PATH,s_e,o_d_r,o_d_l,eval_mode=False):
+def plot_solo_scenario(agent,agent_activity,actors_activity,agent_interalation,agent_state,parsed,solo_scenario,AGENT_FIG_PATH,s_e,o_d_r,o_d_l,eval_mode=False):
     """
     plot the scenarios for one agent
     """
@@ -80,8 +80,7 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,parse
     fig2,axes2 = plt.subplots(nrows,ncols,figsize=(ncols*15,nrows*15))
     ax_list2 = axes2.flatten() #type:ignore
     # extended trajectory pologons
-    _ = agent_state.expanded_polygon_set(TTC=TTC_2,sampling_fq=sampling_frequency)
-    etp = agent_state.expanded_multipolygon
+    etp = agent_state.expanded_polygon_set(TTC=TTC_2,sampling_fq=sampling_frequency,yaw_rate=agent_activity["yaw_rate"])
     # generate the extended bounding boxes
     ebb = agent_state.expanded_bbox_list(expand=bbox_extension)
     # plot band relations type 1
@@ -96,16 +95,16 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,parse
         _ = guest_state.data_preprocessing()
         guest_trajectory_polygon = guest_state.polygon_set()
         # extended trajectory pologons
-        _ = guest_state.expanded_polygon_set(TTC=TTC_2,sampling_fq=sampling_frequency)
-        guest_etp = guest_state.expanded_multipolygon
+        guest_activity = actors_activity[guest_type][f"{guest_type}_{guest_id}_activity"]
+        guest_etp = guest_state.expanded_polygon_set(TTC=TTC_2,sampling_fq=sampling_frequency,yaw_rate=guest_activity["yaw_rate"])
         # generate the extended bounding boxes
         guest_ebb = guest_state.expanded_bbox_list(expand=bbox_extension)
         guest_v_s,guest_v_e = guest_state.get_validity_range()
-        ax_list2[0] = plot_actor_polygons(guest_etp,guest_v_s,guest_v_e,ax_list2[0],f"ETP guest",gradient=False,host=False,type_a=False)
+        ax_list2[0] = plot_actor_polygons(guest_etp,guest_v_s,guest_v_e,ax_list2[0],f"PBB guest",gradient=False,host=False,type_a=False)
         ax_list2[1] = plot_actor_polygons(guest_ebb,guest_v_s,guest_v_e,ax_list2[1],f"EBB guset",gradient=False,host=False,type_a=False)
         ax_list2[0] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list2[0],f"Actual guest",gradient=False,host=False,type_a=True)
         ax_list2[1] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list2[1],f"Actual guest",gradient=False,host=False,type_a=True)
-    ax_list2[0] = plot_actor_polygons(etp,valid_start,valid_end,ax_list2[0],f"ETP host",gradient=False,host=True,type_a=False)
+    ax_list2[0] = plot_actor_polygons(etp,valid_start,valid_end,ax_list2[0],f"PBB host",gradient=False,host=True,type_a=False)
     ax_list2[1] = plot_actor_polygons(ebb,valid_start,valid_end,ax_list2[1],f"EBB host",gradient=False,host=True,type_a=False)
     ax_list2[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list2[0],f"Actual host",gradient=False,host=True,type_a=True)
     ax_list2[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list2[1],f"Actual host",gradient=False,host=True,type_a=True)
@@ -145,7 +144,7 @@ def plot_solo_scenario(agent,agent_activity,agent_interalation,agent_state,parse
     ax_list3[0].legend(by_label.values(),by_label.keys(),markerscale=15,prop=font2)
     ax_list3[0] = set_scaling_2(ax_list3[0],agent_state,valid_start,valid_end)
     # plot relation with static elements
-    actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1,sampling_fq=sampling_frequency)
+    actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1,sampling_fq=sampling_frequency,yaw_rate=agent_activity["yaw_rate"])
     ax_list3[1],_,_,_ = plot_road_graph(parsed,ax=ax_list3[1],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l,eval_mode=eval_mode)
 
     ax_list3[1] = plot_actor_polygons(actor_expanded_multipolygon,valid_start,valid_end,ax_list3[1],"Extended trajectory host",gradient=False,host=True,type_a=False)
@@ -191,25 +190,6 @@ def plot_road_graph(parsed:dict,ax,environment_element=None,original_data_roadgr
 
 def plot_actor_polygons(actor_polygon,valid_start:int,valid_end:int,ax,polygon_label:str,gradient:bool=False,host:bool=True,type_a:bool=True,inter_actor:bool=False):
     colors = get_color_map(ax,valid_start,valid_end,gradient)
-    # if gradient:
-    #     for step in range(valid_start,valid_end+1):
-    #         actor_polygon_step = actor_polygon[step]
-    #         for actor_polygon_step_ in actor_polygon_step:
-    #             x,y = actor_polygon_step_.exterior.xy
-    #             if gradient:
-    #                 ax.fill(x,y,c=colors[step-valid_start])
-    # else:
-    #     if host and type_a:
-    #         color,transparency = actor_color['host_a']['color'],actor_color['host_a']['alpha']
-    #     elif host and not type_a:
-    #         color,transparency = actor_color['host_e']['color'],actor_color['host_e']['alpha']
-    #     elif not host and type_a:
-    #         color,transparency = actor_color['guest_a']['color'],actor_color['guest_a']['alpha']
-    #     else:
-    #         color,transparency = actor_color['guest_e']['color'],actor_color['guest_e']['alpha']
-    #     if inter_actor:
-    #         x,y = actor_polygon.exterior.xy
-    #         ax.fill(x,y,c=color,alpha=transparency,label=polygon_label)
     for step in range(valid_start,valid_end+1):
         actor_polygon_step = actor_polygon[step]
         if isinstance(actor_polygon_step,list):
@@ -242,7 +222,7 @@ def plot_actor_polygons(actor_polygon,valid_start:int,valid_end:int,ax,polygon_l
                     color,transparency = actor_color['guest_e']['color'],actor_color['guest_e']['alpha']
                 ax.fill(x,y,c=color,alpha=transparency,label=polygon_label)
         elif actor_polygon_step.__class__.__name__ =='MultiPolygon':
-            for polygon in actor_polygon_step:
+            for polygon in actor_polygon_step.geoms:
                 x,y = polygon.exterior.xy
                 if gradient:
                     ax.fill(x,y,c=colors[step-valid_start])
