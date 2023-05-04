@@ -33,7 +33,7 @@ gsutil -m cp -r \
 
 ## Usage
 
-1. Install the packages with [requirements.txt](requirements.txt)
+1. Install the packages with [requirements.txt](requirements.txt). The code is tested with Python 3.8.10.
 
 2. To generate the JSON files, you should first check [./utils/runner.py](./utils/runner.py).
     - Please modify the data and result directory.
