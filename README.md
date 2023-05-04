@@ -70,3 +70,5 @@ gsutil -m cp -r \
     # messager for finishing one data record. Comment out this if you don't use wechat
     wechatter(f"Error in plotting {FILENUM}")
     ```
+
+4. Logs are located at the folder [log](./utils/logger/log/).
