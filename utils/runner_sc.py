@@ -11,7 +11,7 @@ from scenario_categorizer import ScenarioCategorizer
 ROOT = Path(__file__).resolve().parent.parent
 parser = argparse.ArgumentParser()
 parser.add_argument('--eval_mode', action="store_true" , help='enable evaluation mode')
-parser.add_argument('--result_time', type=str, required=True, help='result time to be categorized, e.g. 02-28-16_35')
+parser.add_argument('--result_time', type=str, required=True, help='result time to be categorized, e.g., 02-28-16_35')
 args = parser.parse_args()
 
 RESULT_TIME = args.result_time
@@ -35,7 +35,7 @@ for file in track(RESULT_DIR.iterdir(),description="Categorizing..."):
                 continue
             RESULT_SC_DIR = RESULT_DIR / SC_ID
             RESULT_SC_DIR.mkdir(parents=True, exist_ok=True)
-            json.dump(SC_ID_dict, open(RESULT_SC_DIR / f"{file_prefix}_{filenum}_{RESULT_TIME}_{SC_ID}.json", 'w'))
+            json.dump(SC_ID_dict, open(RESULT_SC_DIR / f"{file_prefix}_{filenum}_{SC_ID}.json", 'w'))
         except Exception as e:
             trace = traceback.format_exc()
             logger.error(f"SC:{SC_ID}.\nTag generation:{e}")
