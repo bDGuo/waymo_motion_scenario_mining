@@ -58,7 +58,7 @@ if __name__ == "__main__":
         print(f"File not found:{FILE}")
         logger.info(f"File not found:{FILE_PATH}")
     end = time.perf_counter()
-    logger.info(f"DATA:{FILENUM}.JSON:{RESULT_SOLO}.Run time: {end-start}")
+    logger.info(f"DATA:{FILENUM}.JSON:{RESULT_SOLO[-9:]}.Run time: {end-start}")
 
     # messager for finishing using wechat. Comment out this if you don't want to use wechat
     # wechatter(f"{FILENUM} Plot finished. Run time: {end-start}")
