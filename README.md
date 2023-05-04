@@ -54,7 +54,7 @@ gsutil -m cp -r \
     wechatter(f"FILE:{FILENUM} finished.")
     ```
 
-3. After the generation of JSON files, you can also use [./utils/runner_plot.py](./utils/runner_plot.py) to **visualize** the one-actor scenarios.
+3. **Runner_plot has no function for making plots from data and tags by now.** Don't use it. After the generation of JSON files, you can also use [./utils/runner_plot.py](./utils/runner_plot.py) to **visualize** the one-actor scenarios.
     - This time you also need to modify the directory for storing figures.
 
     ```python
