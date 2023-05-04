@@ -28,21 +28,16 @@ class TagsGenerator:
             'actors_environment_element_intersection': []
         }
 
-    def __call__(self, data_path, file):
-        return self.tagging(data_path, file)
+    def __call__(self, parsed, file, eval_mode=False):
+        return self.tagging(parsed, file, eval_mode=eval_mode)
 
     def __repr__(self) -> str:
         return f"TagsGenerator() tagging {self.tags.keys()}"
 
-    def tagging(self, data_path, file, eval_mode=False):
+    def tagging(self, parsed, file, eval_mode=False):
         """
         tagging the actors in the scene
         """
-        if eval_mode:
-            parsed = get_parsed_carla_data(data_path)
-        else:
-            parsed = get_parsed_data(data_path)
-
         environment_element = self.generate_lane_polygons(parsed, eval_mode=eval_mode)
         agent_state_dict = {key: {} for key in actor_dict.keys()}
         actors_activity = {}  # [actor_type][actor_id][validity/lo_act/la_act]
