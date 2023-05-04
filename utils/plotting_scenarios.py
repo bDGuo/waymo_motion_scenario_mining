@@ -7,6 +7,8 @@ import json
 from collections import OrderedDict
 
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+import matplotlib.cm as cm
 
 from environ_elements import EnvironmentElementsWaymo
 from helpers.create_rect_from_file import actor_creator, get_parsed_data, get_parsed_carla_data
@@ -62,10 +64,10 @@ def plot_solo_scenario(agent,agent_activity,actors_activity,agent_interalation,a
     ax_list1 = axes1.flatten() #type:ignore
     # Plot longitudinal velocity and activity
     ax_list1[0] = plot_actor_activity(agent_activity["long_v"],solo_scenario["lo_act"],\
-        valid_start,valid_end,ax_list1[0],"Longitudinal velocity [m/s]","Longitudinal activity [-]","Longitudinal")
+        valid_start,valid_end,ax_list1[0],fig,"Longitudinal velocity [m/s]","Longitudinal activity [-]","Longitudinal")
     # Plot longitudinal velocity and activity
     ax_list1[1] = plot_actor_activity(agent_activity["yaw_rate"],solo_scenario["la_act"],\
-        valid_start,valid_end,ax_list1[1],"Yaw rate[rad/s]","Lateral activity [-]","Lateral")
+        valid_start,valid_end,ax_list1[1],fig,"Yaw rate[rad/s]","Lateral activity [-]","Lateral")
     plt.tight_layout()
     SOLO_ACTIVITY_PATH = AGENT_FIG_PATH / f"{agent}_activity.jpg"
     plt.savefig(SOLO_ACTIVITY_PATH,bbox_inches="tight")
@@ -100,14 +102,14 @@ def plot_solo_scenario(agent,agent_activity,actors_activity,agent_interalation,a
         # generate the extended bounding boxes
         guest_ebb = guest_state.expanded_bbox_list(expand=bbox_extension)
         guest_v_s,guest_v_e = guest_state.get_validity_range()
-        ax_list2[0] = plot_actor_polygons(guest_etp,guest_v_s,guest_v_e,ax_list2[0],f"PBB guest",gradient=False,host=False,type_a=False)
-        ax_list2[1] = plot_actor_polygons(guest_ebb,guest_v_s,guest_v_e,ax_list2[1],f"EBB guset",gradient=False,host=False,type_a=False)
-        ax_list2[0] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list2[0],f"Actual guest",gradient=False,host=False,type_a=True)
-        ax_list2[1] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list2[1],f"Actual guest",gradient=False,host=False,type_a=True)
-    ax_list2[0] = plot_actor_polygons(etp,valid_start,valid_end,ax_list2[0],f"PBB host",gradient=False,host=True,type_a=False)
-    ax_list2[1] = plot_actor_polygons(ebb,valid_start,valid_end,ax_list2[1],f"EBB host",gradient=False,host=True,type_a=False)
-    ax_list2[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list2[0],f"Actual host",gradient=False,host=True,type_a=True)
-    ax_list2[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list2[1],f"Actual host",gradient=False,host=True,type_a=True)
+        ax_list2[0] = plot_actor_polygons(guest_etp,guest_v_s,guest_v_e,ax_list2[0],fig2,f"PBB guest",gradient=False,host=False,type_a=False)
+        ax_list2[1] = plot_actor_polygons(guest_ebb,guest_v_s,guest_v_e,ax_list2[1],fig2,f"EBB guset",gradient=False,host=False,type_a=False)
+        ax_list2[0] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list2[0],fig2,f"Actual guest",gradient=False,host=False,type_a=True)
+        ax_list2[1] = plot_actor_polygons(guest_trajectory_polygon,guest_v_s,guest_v_e,ax_list2[1],fig2,f"Actual guest",gradient=False,host=False,type_a=True)
+    ax_list2[0] = plot_actor_polygons(etp,valid_start,valid_end,ax_list2[0],fig2,f"PBB host",gradient=False,host=True,type_a=False)
+    ax_list2[1] = plot_actor_polygons(ebb,valid_start,valid_end,ax_list2[1],fig2,f"EBB host",gradient=False,host=True,type_a=False)
+    ax_list2[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list2[0],fig2,f"Actual host",gradient=False,host=True,type_a=True)
+    ax_list2[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list2[1],fig2,f"Actual host",gradient=False,host=True,type_a=True)
     handels,labels = [],[]
     ax_handels,ax_labels = ax_list2[0].get_legend_handles_labels()
     handels.extend(ax_handels)
@@ -138,7 +140,7 @@ def plot_solo_scenario(agent,agent_activity,actors_activity,agent_interalation,a
     fig3,axes3 = plt.subplots(nrows,ncols,figsize=(ncols*15,nrows*15))
     ax_list3 = axes3.flatten() #type:ignore
     ax_list3[0],s_e,o_d_r,o_d_l = plot_road_graph(parsed,ax=ax_list3[0],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l,eval_mode=eval_mode)
-    ax_list3[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[0],"Actual trajectory",gradient=True,host=True,type_a=True)
+    ax_list3[0] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[0],fig3,"Actual trajectory",gradient=True,host=True,type_a=True)
     handels,labels = ax_list3[0].get_legend_handles_labels()
     by_label = OrderedDict(zip(labels,handels))
     ax_list3[0].legend(by_label.values(),by_label.keys(),markerscale=15,prop=font2)
@@ -147,8 +149,8 @@ def plot_solo_scenario(agent,agent_activity,actors_activity,agent_interalation,a
     actor_expanded_multipolygon = agent_state.expanded_polygon_set(TTC=TTC_1,sampling_fq=sampling_frequency,yaw_rate=agent_activity["yaw_rate"])
     ax_list3[1],_,_,_ = plot_road_graph(parsed,ax=ax_list3[1],environment_element=s_e,original_data_roadgragh=o_d_r,original_data_light=o_d_l,eval_mode=eval_mode)
 
-    ax_list3[1] = plot_actor_polygons(actor_expanded_multipolygon,valid_start,valid_end,ax_list3[1],"Extended trajectory host",gradient=False,host=True,type_a=False)
-    ax_list3[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[1],"Actual trajectory host",gradient=False,host=True,type_a=True)
+    ax_list3[1] = plot_actor_polygons(actor_expanded_multipolygon,valid_start,valid_end,ax_list3[1],fig3,"Extended trajectory host",gradient=False,host=True,type_a=False)
+    ax_list3[1] = plot_actor_polygons(actor_trajectory_polygon,valid_start,valid_end,ax_list3[1],fig3,"Actual trajectory host",gradient=False,host=True,type_a=True)
     handels,labels = ax_list3[1].get_legend_handles_labels()
     by_label = OrderedDict(zip(labels,handels))
     ax_list3[1].legend(by_label.values(),by_label.keys(),markerscale=15,prop=font2)
@@ -158,7 +160,13 @@ def plot_solo_scenario(agent,agent_activity,actors_activity,agent_interalation,a
     plt.close()
     return 0
 
-def plot_road_graph(parsed:dict,ax,environment_element=None,original_data_roadgragh=None,original_data_light=None,eval_mode=False):
+def plot_road_graph(parsed:dict,ax,environment_element=None,original_data_roadgragh=None,original_data_light=None,eval_mode=False,*kwargs):
+    '''
+    
+    kwargs:
+
+    '''
+    
     if not environment_element or not original_data_roadgragh or not original_data_light:
         environment_element = EnvironmentElementsWaymo(parsed)
         original_data_roadgragh,original_data_light = environment_element.road_graph_parser(eval_mode=eval_mode)
@@ -176,10 +184,10 @@ def plot_road_graph(parsed:dict,ax,environment_element=None,original_data_roadgr
             x,y = other_object_polygon.exterior.xy
             ax.fill(x,y,c=lane_color[other_object_type],label=f'{other_object_type}')
     # plot road lines
-    ax = plot_road_lines(ax,original_data_roadgragh,original_data_light,road_lines=1) #type:ignore
-    ax.set_xlabel('x(m)',fontdict=font1)
-    ax.set_ylabel('y(m)',fontdict=font1)
-    ax.tick_params(labelsize=font1['size'])
+    ax = plot_road_lines(ax,original_data_roadgragh,original_data_light,road_lines=True,controlled_lane=True) #type:ignore
+    ax.set_xlabel('X (m)',fontdict=font2)
+    ax.set_ylabel('Y (m)',fontdict=font2)
+    ax.tick_params(labelsize=font2['size'])
     plt.xticks(fontname = "Times New Roman")
     plt.yticks(fontname = "Times New Roman")
     ax.set_aspect('equal')
@@ -188,8 +196,8 @@ def plot_road_graph(parsed:dict,ax,environment_element=None,original_data_roadgr
     # ax.legend(by_label.values(),by_label.keys(),loc="upper right",markerscale=15.0,prop=font1)
     return ax,environment_element,original_data_roadgragh,original_data_light
 
-def plot_actor_polygons(actor_polygon,valid_start:int,valid_end:int,ax,polygon_label:str,gradient:bool=False,host:bool=True,type_a:bool=True,inter_actor:bool=False):
-    colors = get_color_map(ax,valid_start,valid_end,gradient)
+def plot_actor_polygons(actor_polygon,valid_start:int,valid_end:int,ax,fig,polygon_label:str,gradient:bool=False,host:bool=True,type_a:bool=True,inter_actor:bool=False):
+    colors = get_color_map(ax,fig,valid_start,valid_end,gradient)
     for step in range(valid_start,valid_end+1):
         actor_polygon_step = actor_polygon[step]
         if isinstance(actor_polygon_step,list):
@@ -238,12 +246,12 @@ def plot_actor_polygons(actor_polygon,valid_start:int,valid_end:int,ax,polygon_l
                     ax.fill(x,y,c=color,alpha=transparency,label=polygon_label)
     return ax
 
-def plot_actor_activity(data,activity,valid_start,valid_end,ax1,legend_data:str,legend_activity:str,title:str):
+def plot_actor_activity(data,activity,valid_start,valid_end,ax1,fig,legend_data:str,legend_activity:str,title:str):
     if not isinstance(valid_start,int):
         valid_start = int(valid_start)
         valid_end = int(valid_end)
     time = np.arange(len(data)) / 10
-    color_map = get_color_map(ax1,-5,2)
+    color_map = get_color_map(ax1,fig,-5,2)
     if legend_data.startswith("Long"):
         act_dict = {v:k for k,v in lo_act_dict.items()}
     else:
@@ -287,30 +295,31 @@ def plot_actor_activity_2(data,activity,valid_start,valid_end,ax1,ax2,legend_dat
         legend_data = f"{legend_data} [rad/s]"
     return ax1,ax2
 
-def get_color_map(ax,valid_start,valid_end,gradient:bool=False,plot:bool=False):
+def get_color_map(ax,fig,valid_start,valid_end,gradient:bool=False,colorbar:bool=False):
     if gradient:
         vs = np.linspace(valid_start,valid_end,valid_end-valid_start+1)
-        vs = vs / sampling_frequency
-        norm = plt.Normalize(valid_start/sampling_frequency,valid_end/sampling_frequency) #type:ignore
-        color_map = plt.cm.cool #type:ignore
+        # vs = vs / sampling_frequency
+        # norm = plt.Normalize(valid_start/sampling_frequency,valid_end/sampling_frequency) #type:ignore
+        color_map = cm.get_cmap('Oranges',len(vs)-1)
+        norm = mcolors.BoundaryNorm(vs,len(vs)-1)
         # plot one agent trajectory with rectangualrs
-        sm = plt.cm.ScalarMappable(cmap=color_map, norm=norm) #type:ignore
+        sm = cm.ScalarMappable(cmap=color_map, norm=norm)
         sm.set_array([])
-        cb = plt.colorbar(sm, ax=ax)
-        cb.set_label('time [s]',fontfamily=font2['family'],fontsize=font2['size'])
-        cb.set_ticks(np.linspace(np.min(vs),np.max(vs),9))
-        ticks = cb.get_ticks()
-        cblabels = np.linspace(valid_start,valid_end,len(ticks))/sampling_frequency
-        cblabels = [f"{i:.2f}" for i in cblabels]
-        cb.set_ticks(ticks,labels=cblabels,fontfamily=font1['family'],fontsize=font1['size'])
+        if colorbar:
+            cb = fig.colorbar(sm, ax=ax,orientation='vertical')
+            cb.set_label('Time step (-)',fontfamily=font2['family'],fontsize=font2['size'])
+            # cb.set_ticks(np.linspace(np.min(vs),np.max(vs),9))
+            # ticks = cb.get_ticks()
+            # cblabels = np.linspace(valid_start,valid_end,len(ticks))/sampling_frequency
+            # cblabels = [f"{i:.2f}" for i in cblabels]
+            cb.set_ticks(np.arange(valid_start,valid_end+1,1),labels=np.arange(valid_start,valid_end+1,1),fontfamily=font2['family'],fontsize=font2['size'])
     else:
         vs = np.linspace(valid_start,valid_end,valid_end-valid_start+1)
-        norm = plt.Normalize(valid_start,valid_end) #type:ignore
-        color_map = plt.cm.jet #type:ignore
+        color_map = cm.get_cmap('warm',len(vs)-1)
+        norm = mcolors.BoundaryNorm(vs,len(vs)-1)
         # plot one agent trajectory with rectangualrs
-        sm = plt.cm.ScalarMappable(cmap=color_map, norm=norm) #type:ignore
+        sm = cm.ScalarMappable(cmap=color_map, norm=norm)
         sm.set_array([])
-    sm = plt.cm.ScalarMappable(cmap=color_map, norm=norm) #type:ignore
     colors = color_map(norm(vs))
     return colors
 
@@ -351,7 +360,21 @@ def get_scaling(ax,xlim,ylim,factor):
 def set_scaling_2(ax,agent_state,valid_start,valid_end):
     position_x = agent_state.kinematics["x"].squeeze()[valid_start:valid_end+1]
     position_y = agent_state.kinematics["y"].squeeze()[valid_start:valid_end+1]
-    xlim,ylim = get_scaling(ax,[np.min(position_x),np.max(position_x)],[np.min(position_y),np.max(position_y)],40)
+    xlim,ylim = get_scaling(ax,[np.min(position_x),np.max(position_x)],[np.min(position_y),np.max(position_y)],20)
+    # xlim = [max(xlim[0],xlim_[0]),min(xlim[1],xlim_[1])]
+    # ylim = [max(ylim[0],ylim_[0]),min(ylim[1],ylim_[1])]
+    ax.set_xlim(xlim)
+    ax.set_ylim(ylim)
+    return ax
+
+def set_scaling_3(ax,agent_state_1,agent_state_2,valid_start,valid_end):
+    position_x_1 = agent_state_1.kinematics["x"].squeeze()[valid_start:valid_end+1]
+    position_y_1 = agent_state_1.kinematics["y"].squeeze()[valid_start:valid_end+1]
+    position_x_2 = agent_state_2.kinematics["x"].squeeze()[valid_start:valid_end+1]
+    position_y_2 = agent_state_2.kinematics["y"].squeeze()[valid_start:valid_end+1]
+    position_x = np.concatenate((position_x_1,position_x_2))
+    position_y = np.concatenate((position_y_1,position_y_2))
+    xlim,ylim = get_scaling(ax,[np.min(position_x),np.max(position_x)],[np.min(position_y),np.max(position_y)],2)
     # xlim = [max(xlim[0],xlim_[0]),min(xlim[1],xlim_[1])]
     # ylim = [max(ylim[0],ylim_[0]),min(ylim[1],ylim_[1])]
     ax.set_xlim(xlim)
