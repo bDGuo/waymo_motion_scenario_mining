@@ -15,7 +15,7 @@ parser.add_argument('--result_time', type=str, required=True, help='result time 
 args = parser.parse_args()
 
 RESULT_TIME = args.result_time
-RESULT_DIR = ROOT / "results/gp1" / f"2023-{RESULT_TIME}"
+RESULT_DIR = ROOT / "results" / "gp1" / f"2023-{RESULT_TIME}"
 file_prefix = "Waymo" if not args.eval_mode else "Carla"
 
 sc = ["SC1","SC7","SC13"]
