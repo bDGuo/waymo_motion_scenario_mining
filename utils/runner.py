@@ -10,7 +10,8 @@ import time
 import traceback
 
 from rich.progress import track
-
+import tensorflow as tf
+from helpers.create_rect_from_file import features_description, get_parsed_carla_data
 from logger.logger import *
 from scenario_miner import ScenarioMiner
 from tags_generator import TagsGenerator
@@ -35,77 +36,76 @@ ROOT = Path(__file__).resolve().parent.parent
 # modify the following two lines to your own data and result directory
 DATA_DIR = ROOT / "waymo_open_dataset" / "data" / "tf_example" / "training"
 if ext_data:
-    DATA_DIR = Path("E:/VRU_prediction_dataset/waymo")
+    DATA_DIR = Path("F:/VRU_prediction_dataset/waymo")
 
 if eval_mode:
     DATA_DIR = ROOT / "waymo_open_dataset" / "data" / "eval_data" / "carla_data"
 
 DATA_DIR_WALK = DATA_DIR.iterdir()
-if result_folder:
-    RESULT_TIME = f"2023-{result_folder}"
-else:
-    RESULT_TIME = time.strftime("%Y-%m-%d-%H_%M", time.localtime())
-RESULT_DIR = ROOT / "results" / "gp1" / RESULT_TIME
-if not RESULT_DIR.exists():
-    RESULT_DIR.mkdir(exist_ok=True, parents=True)
+
 
 # parser = argparse.ArgumentParser()
 # parser.add_argument('--file', type=str, required=True, help='#file to plot.e.g.:00003')
 # args = parser.parse_args()
 
 if __name__ == '__main__':
+    if result_folder:
+        RESULT_TIME = f"2023-{result_folder}"
+    else:
+        RESULT_TIME = time.strftime("%Y-%m-%d-%H_%M", time.localtime())
+    RESULT_DIR = ROOT / "results" / "gp1" / RESULT_TIME
+    if not RESULT_DIR.exists():
+        RESULT_DIR.mkdir(exist_ok=True, parents=True)
     time_start = time.perf_counter()
     for DATA_PATH in track(DATA_DIR_WALK, description="Processing files"):
         FILE = DATA_PATH.name
         if eval_mode and not FILE.endswith(".pkl"):
             continue
         if specified_file and specified_file != FILE:
-            print(f"Skipping file: {FILE}")
+            print(f"Skipping file: {FILE}.")
             continue
         FILENUM = re.search(r"-(\d{5})-", FILE)
         if FILENUM is not None:
             FILENUM = FILENUM.group()[1:-1]
-            print(f"Processing file: {FILE}")
+            print(f"Processing file: {FILE}.")
         else:
-            print(f"File name error: {FILE}")
+            print(f"File name error: {FILE}.")
             continue
         result_dict = {}
-        RESULT_FILENAME = f'Waymo_{FILENUM}_{RESULT_TIME}_tag.json'
-        if eval_mode:
-            fileprefix = FILE.split('-')[0]
-        else:
-            fileprefix = 'Waymo'
-        RESULT_FILENAME = f'{fileprefix}_{FILENUM}_{RESULT_TIME}_tag.json'
         try:
-            #   tagging
-            tags_generator = TagsGenerator()
-            general_info, \
-            inter_actor_relation, \
-            actors_activity, \
-            actors_environment_element_intersection = tags_generator.tagging(DATA_DIR / FILE,FILE,eval_mode=eval_mode)
-            result_dict = {
-                'general_info': general_info,
-                'inter_actor_relation': inter_actor_relation,
-                'actors_activity': actors_activity,
-                'actors_environment_element_intersection': actors_environment_element_intersection
-            }
-            with open(RESULT_DIR / RESULT_FILENAME, 'w') as f:
-                print(f"Saving tags.")
-                json.dump(result_dict, f)
-            # #####  scenario categorization   #####
-            # scenario_categorizer = ScenarioCategorizer(FILENUM,result_dict)
-            # SC_dict = scenario_categorizer.find_SC('SC1')
-            # RESULT_FILENAME = f'Waymo_{FILENUM}_{RESULT_TIME}_SC1.json'
-            # with open(RESULT_DIR / RESULT_FILENAME,'w') as f:
-            #     print(f"Saving SC1.")
-            #     json.dump(SC_dict,f)
-            #  solo scenario mining
-            scenario_miner = ScenarioMiner()
-            solo_scenarios = scenario_miner.mining(result_dict)
-            RESULT_FILENAME = f'{fileprefix}_{FILENUM}_{RESULT_TIME}_solo.json'
-            with open(RESULT_DIR / RESULT_FILENAME, 'w') as f:
-                print(f"Saving solo scenarios.")
-                json.dump(solo_scenarios, f)
+            # parsing data
+            if eval_mode:
+                parsed = get_parsed_carla_data(DATA_DIR / FILE)
+                fileprefix = FILE.split('-')[0]
+            else:
+                fileprefix = 'Waymo'
+                dataset = tf.data.TFRecordDataset(DATA_DIR / FILE, compression_type='')
+                for data in dataset.as_numpy_iterator():
+                    parsed = tf.io.parse_single_example(data, features_description)
+                    scene_id = parsed['scenario/id'].numpy().item().decode("utf-8")
+                    print(f"Processing scene: {scene_id}.")
+                    result_filename = f'{fileprefix}_{FILENUM}_{scene_id}_tag.json'
+                    #   tagging
+                    tags_generator = TagsGenerator()
+                    general_info, \
+                    inter_actor_relation, \
+                    actors_activity, \
+                    actors_environment_element_intersection = tags_generator.tagging(parsed,FILE)
+                    result_dict = {
+                        'general_info': general_info,
+                        'inter_actor_relation': inter_actor_relation,
+                        'actors_activity': actors_activity,
+                        'actors_environment_element_intersection': actors_environment_element_intersection
+                    }
+                    with open(RESULT_DIR / result_filename, 'w') as f:
+                        print(f"Saving tags.")
+                        json.dump(result_dict, f)
+                    scenario_miner = ScenarioMiner()
+                    solo_scenarios = scenario_miner.mining(result_dict)
+                    result_filename = f'{fileprefix}_{FILENUM}_{scene_id}_solo.json'
+                    with open(RESULT_DIR / result_filename, 'w') as f:
+                        print(f"Saving solo scenarios.")
+                        json.dump(solo_scenarios, f)
         except Exception as e:
             trace = traceback.format_exc()
             logger.error(f"FILE:{FILENUM}.\nTag generation error:{e}")
