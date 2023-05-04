@@ -105,7 +105,7 @@ def visualize_one_agent(states,
     image = fig_canvas_image(fig)
     return 0
 
-def plot_road_lines(ax,original_data_roadgragh:dict,original_data_light:dict,road_lines:float=0,lane_center:float=0):
+def plot_road_lines(ax,original_data_roadgragh:dict,original_data_light:dict,road_lines:bool=False,lane_center:bool=False,controlled_lane:bool=False):
     
     roadgraph_type = original_data_roadgragh['roadgraph_type']
     roadgraph_xyz = original_data_roadgragh['roadgraph_xyz']
@@ -140,7 +140,7 @@ def plot_road_lines(ax,original_data_roadgragh:dict,original_data_light:dict,roa
 
     # plot controlled lanes
     controlled_lanes_id = np.unique(traffic_lights_id[traffic_lights_valid==1])
-    if len(controlled_lanes_id):
+    if len(controlled_lanes_id) and controlled_lane:
         for controlled_lane_id in controlled_lanes_id:
             controlled_lanes_pts = np.where(roadgraph_lane_id==controlled_lane_id)[0]
             if(len(controlled_lanes_pts)):
