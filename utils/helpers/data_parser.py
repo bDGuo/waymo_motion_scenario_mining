@@ -2,6 +2,11 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import tensorflow as tf
 
+# scnario id
+scenario_id = {
+    'scenario/id': tf.io.FixedLenFeature([1], tf.string, default_value=None)
+}
+
 # Field Definition
 roadgraph_features = {
     'roadgraph_samples/dir':
@@ -140,6 +145,7 @@ traffic_light_features = {
 }
 
 features_description = {}
+features_description.update(scenario_id)
 features_description.update(roadgraph_features)
 features_description.update(state_features)
 features_description.update(traffic_light_features)
