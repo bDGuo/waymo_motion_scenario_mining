@@ -295,7 +295,7 @@ def plot_actor_activity_2(data,activity,valid_start,valid_end,ax1,ax2,legend_dat
         legend_data = f"{legend_data} [rad/s]"
     return ax1,ax2
 
-def get_color_map(ax,fig,valid_start,valid_end,gradient:bool=False,colorbar:bool=False):
+def get_color_map(ax,fig,valid_start,valid_end,gradient:bool=False,colorbar:bool=False,cborientation:str="vertical"):
     if gradient:
         vs = np.linspace(valid_start,valid_end,valid_end-valid_start+1)
         # vs = vs / sampling_frequency
@@ -306,7 +306,7 @@ def get_color_map(ax,fig,valid_start,valid_end,gradient:bool=False,colorbar:bool
         sm = cm.ScalarMappable(cmap=color_map, norm=norm)
         sm.set_array([])
         if colorbar:
-            cb = fig.colorbar(sm, ax=ax,orientation='vertical')
+            cb = fig.colorbar(sm, ax=ax,orientation=cborientation)
             cb.set_label('Time step (-)',fontfamily=font2['family'],fontsize=font2['size'])
             # cb.set_ticks(np.linspace(np.min(vs),np.max(vs),9))
             # ticks = cb.get_ticks()
