@@ -105,7 +105,7 @@ def visualize_one_agent(states,
     image = fig_canvas_image(fig)
     return 0
 
-def plot_road_lines(ax,original_data_roadgragh:dict,original_data_light:dict,road_lines:bool=False,lane_center:bool=False,controlled_lane:bool=False):
+def plot_road_lines(ax,original_data_roadgragh:dict,original_data_light:dict,road_edge:bool=True,road_lines:bool=False,lane_center:bool=False,controlled_lane:bool=False):
     
     roadgraph_type = original_data_roadgragh['roadgraph_type']
     roadgraph_xyz = original_data_roadgragh['roadgraph_xyz']
@@ -118,17 +118,18 @@ def plot_road_lines(ax,original_data_roadgragh:dict,original_data_light:dict,roa
     'bike_lane':3
     }
     # road edges
-    roadedge_mask = np.where((roadgraph_type[:,0]==15) | (roadgraph_type[:,0]==16))[0]
-    roadedge_pts = roadgraph_xyz[roadedge_mask,:2].T
-    if (len(roadedge_pts[0,:])>0):
-        ax.scatter(roadedge_pts[0,:],roadedge_pts[1,:],color='k',marker='.',s=1,label="road edge points")
+    if road_edge:
+        roadedge_mask = np.where((roadgraph_type[:,0]==15) | (roadgraph_type[:,0]==16))[0]
+        roadedge_pts = roadgraph_xyz[roadedge_mask,:2].T
+        if (len(roadedge_pts[0,:])>0):
+            ax.scatter(roadedge_pts[0,:],roadedge_pts[1,:],color='k',marker='.',s=20,label="road edge points")
 
     # road lines
     if road_lines:
         roadline_mask = np.where((roadgraph_type[:,0]>=6) & (roadgraph_type[:,0]<=13))[0]
         roadline_pts = roadgraph_xyz[roadline_mask,:2].T
         if (len(roadline_pts[0,:])>0):
-            ax.scatter(roadline_pts[0,:],roadline_pts[1,:],color='k',marker='.',s=1,label="road line points")
+            ax.scatter(roadline_pts[0,:],roadline_pts[1,:],color='k',marker='.',s=20,label="road line points")
 
     if lane_center:
     # plot lane center
@@ -136,7 +137,7 @@ def plot_road_lines(ax,original_data_roadgragh:dict,original_data_light:dict,roa
             lane_mask = np.where(roadgraph_type[:,0]==lane_type[key])[0]
             lane_pts = roadgraph_xyz[lane_mask,:2].T
             if len(lane_pts[0,:]):
-                ax.scatter(lane_pts[0,:],lane_pts[1,:],color='k',marker=".",s=1,label=f"lane center: {key}")
+                ax.scatter(lane_pts[0,:],lane_pts[1,:],color='k',marker=".",s=20,label=f"lane center: {key}")
 
     # plot controlled lanes
     controlled_lanes_id = np.unique(traffic_lights_id[traffic_lights_valid==1])
@@ -144,5 +145,5 @@ def plot_road_lines(ax,original_data_roadgragh:dict,original_data_light:dict,roa
         for controlled_lane_id in controlled_lanes_id:
             controlled_lanes_pts = np.where(roadgraph_lane_id==controlled_lane_id)[0]
             if(len(controlled_lanes_pts)):
-                ax.scatter(roadgraph_xyz[controlled_lanes_pts,0],roadgraph_xyz[controlled_lanes_pts,1],color='g',marker=".",s=1,label=f"controlled lane points")
+                ax.scatter(roadgraph_xyz[controlled_lanes_pts,0],roadgraph_xyz[controlled_lanes_pts,1],color='g',marker=".",s=20,label=f"controlled lane points")
     return ax
