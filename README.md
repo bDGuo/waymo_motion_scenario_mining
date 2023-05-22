@@ -1,10 +1,10 @@
 # Scenario Extraction from a Large Real-World Dataset
 
-This repo contains a python implementation of scenario extraction from a large real-world dataset, i.e., [Waymo Open Motion Dataset v1.1](https://waymo.com/open/data/motion).
+This repo contains a python implementation of scenario extraction from a large real-world dataset, i.e., [Waymo Open Motion Dataset](https://waymo.com/open/data/motion).
 
 ## Dataset
 
-Before running the code, please download the dataset in tf_example format files.
+Before running the code, please download the dataset v1.1 in tf_example format files.
 
 ## Running the code
 
@@ -26,4 +26,4 @@ Before running the code, please download the dataset in tf_example format files.
 
 ## Extracted scenarios
 
-We have extracted a total of 215,090 scenarios across three scenario categories, which can is accessible [here]().
+We have extracted a total of 215,090 scenarios across three scenario categories, which can is accessible [here](https://drive.google.com/file/d/1i7kxqBIosCxKK2SI_cP6srOqkre_iDkc/view?usp=share_link).
