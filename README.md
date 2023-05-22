@@ -1,79 +1,29 @@
-# VRU-related Scenario Mining in Waymo Open Motion Dataset
+# Scenario Extraction from a Large Real-World Dataset
 
-## Introduction
+This repo contains a python implementation of scenario extraction from a large real-world dataset, i.e., [Waymo Open Motion Dataset v1.1](https://waymo.com/open/data/motion).
 
-This repo contains a python implementation of VRU-related scenario mining for the dataset [Waymo Open Motion Dataset(WOMD)](https://waymo.com/open/data/motion).
-For each data record in WOMD there are two JSON files that describe the mined scenarios.
+## Dataset
 
-- Waymo_#data_YYYY-MM-DD-HH_MM_**solo**.json
-- Waymo_#data_YYYY-MM-DD-HH_MM_**tag**.json
+Before running the code, please download the dataset in tf_example format files.
 
-## Dataset downloading
-
-The ''tfexample'' from [WOMD](https://waymo.com/open/data/motion) is organized by time-frame.
-Download dataset in shell:
-
-```shell
-gcloud init # not needed after the first time
-```
-
-```shell
-gcloud auth login # go to browser and login with google account
-```
-
-```shell
-gsutil config # config project name
-```
-
-```shell
-gsutil -m cp -r \
-  "gs://waymo_open_dataset_motion_v_1_1_0/uncompressed/tf_example" \
-  "your_data_dir"
-```
-
-## Usage
+## Running the code
 
 1. Install the packages in virtual environment with [requirements.txt](requirements.txt). The code is tested with Python 3.8.10.
+2. To generate the tags, run with the following command.
 
-2. To generate the tags, you should first check [./utils/runner.py](./utils/runner.py).
-    - Before running the code, please modify the data directory.
+   ```shell
+   python .\utils\runner.py --data_dir your_data_path
+   # An example of your_data_path is "./waymo_v_1_1/tf_example/training"
+   ```
 
-    ```python
-    # current working directory
-    ROOT = Path(__file__).parent.parent
+   The tags will be stored in an automatically created folder which is named by the time you run the code in [./results/](./results/)
+3. To categorize the scenarios by searching for a combination of tags, run the following command
 
-    # modify the following line to your own data directory
-    DATA_DIR = ROOT / "waymo_open_dataset/data/tf_example/training"
-    ```
+   ```shell
+   python .\utils\runner_sc.py --result_time your_result_time
+   # MM-DD-HH_MM
+   ```
 
-    - Run with the following command
+## Extracted scenarios
 
-    ```shell
-    python .\utils\runner.py
-    ```
-
-    - The tags will be stored in an automatically created folder which is named by the time you run the code in [./results/gp1/](./results/gp1/)
-
-3. For scenario categorization, run the follwoing command
-
-```shell
-python .\utils\runner_sc.py --result_time [result_time] # check the folder where the tags is stored. Format: MM-DD-HH_MM
-
-4. **Runner_plot has no function for making plots from data and tags by now.** Don't use it. After the generation of JSON files, you can also use [./utils/runner_plot.py](./utils/runner_plot.py) to **visualize** the one-actor scenarios.
-    - This time you also need to modify the directory for storing figures.
-
-    ```python
-    # modify the following two lines to your own data,figures, and result directory
-    DATADIR = ROOT / "waymo_open_dataset/data/tf_example/training"
-    FIGDIR = ROOT / "figures/scenarios/v3"
-    RESULTDIR = ROOT / "results/v6"
-    ```
-
-    - Again, comment out the wechat messager if it does not work for you.
-
-    ```python
-    # messager for finishing one data record. Comment out this if you don't use wechat
-    wechatter(f"Error in plotting {FILENUM}")
-    ```
-
-5. Logs are located at the folder [log](./utils/logger/log/).
+We have extracted a total of 215,090 scenarios across three scenario categories, which can is accessible [here]().
