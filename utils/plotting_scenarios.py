@@ -312,7 +312,7 @@ def get_color_map(ax,fig,valid_start,valid_end,gradient:bool=False,colorbar:bool
             # ticks = cb.get_ticks()
             # cblabels = np.linspace(valid_start,valid_end,len(ticks))/sampling_frequency
             # cblabels = [f"{i:.2f}" for i in cblabels]
-            cb.set_ticks(np.arange(valid_start,valid_end+1,1),labels=np.arange(valid_start,valid_end+1,1),fontfamily=font2['family'],fontsize=font2['size'])
+            cb.set_ticks(np.arange(valid_start,valid_end+1,2),labels=np.arange(valid_start,valid_end+1,2),fontfamily=font2['family'],fontsize=font2['size'])
     else:
         vs = np.linspace(valid_start,valid_end,valid_end-valid_start+1)
         color_map = cm.get_cmap('warm',len(vs)-1)
