@@ -190,13 +190,13 @@ class EnvironmentElementsWaymo:
         controlled_lanes_id = np.unique(traffic_lights_id[traffic_lights_valid_status==1])
         # self.controlled_lanes_id = controlled_lanes_id.tolist()
         # create the lane polygon set
-        self.__create_lane_polygon_set(roadgraph_type,roadgraph_xyz,roadgraph_lane_id,controlled_lanes_id)
+        self.__create_lane_polygon_set(roadgraph_type,roadgraph_xyz,roadgraph_lane_id,controlled_lanes_id,eval_mode=eval_mode)
         # create the other object polygon set
         self.__create_other_object_polygon_set(roadgraph_type,roadgraph_xyz,roadgraph_lane_id)
         # create the traffic light dict
         self.__reducing_traffic_lights_dim()
     
-    def __create_lane_polygon_set(self,roadgraph_type,roadgraph_xyz,roadgraph_lane_id,controlled_lanes_id):
+    def __create_lane_polygon_set(self,roadgraph_type,roadgraph_xyz,roadgraph_lane_id,controlled_lanes_id,eval_mode:bool=False):
         # create the lane polygon list for each lane type
         for key in self.lane_type:
             lane_mask = np.where(roadgraph_type[:,0]==self.lane_type[key])[0]
@@ -205,8 +205,11 @@ class EnvironmentElementsWaymo:
             lane_unique_id = np.unique(lane_id_list)    # dim = [num_lanes,1]
             for lane_id in lane_unique_id:
                 lane_coordinates = lane_pts[np.where(lane_id_list==lane_id)[0],:]
-                lane_polylines = LineString(lane_coordinates) if len(lane_coordinates) > 1 else Point(lane_coordinates[0])
-                lane_polygon = Polygon(lane_polylines.buffer(self.lane_width[key]/2))
+                if eval_mode:
+                    lane_polygon = Polygon(lane_coordinates)
+                else:
+                    lane_polylines = LineString(lane_coordinates) if len(lane_coordinates) > 1 else Point(lane_coordinates[0])
+                    lane_polygon = Polygon(lane_polylines.buffer(self.lane_width[key]/2))
                 self.lane[key].append(lane_polygon)
                 self.lane_id[key].append(lane_id)
                 # append controlled lane polygon
@@ -228,137 +231,16 @@ class EnvironmentElementsWaymo:
                 self.other_object[key].append(other_object_polygon)
                 self.other_object_id[key].append(other_object_id)
         return 0
-            
-    def __create_lane_polygon_set_0(self,roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz,roadgraph_lane_id,controlled_lanes_id):
-        # deprecated for low efficiency
-        for key in self.lane_type:
-            lane_mask = np.where(roadgraph_type[:,0]==self.lane_type[key])[0]
-            lane_pts = roadgraph_xyz[lane_mask,:2].T
-            lane_dir = roadgraph_dir_xyz[lane_mask,:2].T
-            lane_id = roadgraph_lane_id[lane_mask]
-            # print(f"lane {key} has {lane_pts.shape} points")
-            if(len(lane_mask)):
-                lane_start = 0
-                lane_coordinates = [(lane_pts[0,lane_start],lane_pts[1,lane_start])]
-                for i,(pt_x,pt_y,dir_x,dir_y) in enumerate(zip(lane_pts[0,:],lane_pts[1,:],lane_dir[0,:],lane_dir[1,:])):
-                    if dir_y==0 and dir_x==0:
-                        if len(lane_coordinates)>1:
-                            lane_polylines = LineString(lane_coordinates)
-                            lane_polygon = Polygon(lane_polylines.buffer(self.lane_width[key]/2))
-                            self.lane[key].append(lane_polygon)
-                            self.lane_id[key].append(lane_id[i,0])
-                            # append controlled lane polygon
-                            if lane_id[i,0] in controlled_lanes_id:
-                                self.controlled_lane['controlled_lane_polygon'].append(lane_polygon)
-                                self.controlled_lane_id.append(lane_id[i,0])
-                        else:
-                            lane_point = Point(lane_coordinates[0]).buffer(self.lane_width[key]/2)
-                            self.lane[key].append(lane_point)
-                            self.lane_id[key].append(lane_id[i,0])
-                        lane_start = i+1
-                        if lane_start == len(lane_pts[0,:]):
-                            break
-                        else:
-                            lane_coordinates = [(lane_pts[0,lane_start],lane_pts[1,lane_start])]
-                    for _,(pt_x_2,pt_y_2) in enumerate(zip(lane_pts[0,:],lane_pts[1,:])):
-                        if dir_x == 0 and dir_y != 0:
-                            if pt_x_2 == pt_x:
-                                lane_coordinates.append((pt_x_2,pt_y_2))
-                                break
-                        elif dir_y == 0 and dir_x != 0:
-                            if pt_y_2 == pt_y:
-                                lane_coordinates.append((pt_x_2,pt_y_2))
-                                break
-                        elif dir_x !=0 and dir_y != 0:
-                            if np.abs((pt_x_2-pt_x)/dir_x-(pt_y_2-pt_y)/dir_y) < 1e-10:
-                                lane_coordinates.append((pt_x_2,pt_y_2))
-                                break
-
-    def __create_other_object_polygon_set_0(self,roadgraph_type,roadgraph_xyz,roadgraph_dir_xyz):
-        # deprecated for low efficiency
-        # line range for finding colinear points
-        line_range = 20
-        tolerance = 1e-5
-        # create the crosswalk and speed bump polygon set
-        for key in self.other_object_type:
-            object_type_mask = np.where((roadgraph_type[:,0]==self.other_object_type[key]))[0]
-            object_type_pts = roadgraph_xyz[object_type_mask,:2].T
-            object_type_dir = roadgraph_dir_xyz[object_type_mask,:2].T
-            found_pts = []
-            if len(object_type_mask):
-                # recursively find the polygon points
-                # for i,(pt_x,pt_y,dir_x,dir_y) in enumerate(zip(object_type_pts[0,:],object_type_pts[1,:],object_type_dir[0,:],object_type_dir[1,:])):
-                #     if i in found_pts:
-                #         continue
-                #     else:
-                #         point_1 = Point(pt_x,pt_y)
-                #         result = [point_1]
-                #         found_pts = [i]
-                #         result,found_pts = self.__found_other_object_polygon(i,pt_x,pt_y,dir_x,dir_y,line_range,object_type_pts[0,i+1],object_type_pts[1,i+1],tolerance,result,found_pts)
-                # pass
-                polygon_start = 0
-                polygon_coordinates =  [(object_type_pts[0,polygon_start],object_type_pts[1,polygon_start])]
-                tolerance = 1e-5
-                for i,(pt_x,pt_y,dir_x,dir_y) in enumerate(zip(object_type_pts[0,:],object_type_pts[1,:],object_type_dir[0,:],object_type_dir[1,:])):
-                    # dir_y==dir_x==0 means the end of the polygon
-                    if dir_y==0 and dir_x==0:
-                        # plolygon should have at least 3 points
-                        if len(polygon_coordinates)>=3:
-                            object_polygon = Polygon(polygon_coordinates)
-                            self.other_object[key].append(object_polygon)
-                        else:
-                            pass
-                        #check if the next point is the last second point,then break;else continue with a new polygon
-                        polygon_start = i+1
-                        if polygon_start == len(object_type_pts[0,:]):
-                            break
-                        else:
-                            polygon_coordinates = [(object_type_pts[0,polygon_start],object_type_pts[1,polygon_start])]
-                    for j,(pt_x_2,pt_y_2) in enumerate(zip(object_type_pts[0,:],object_type_pts[1,:])):
-                        if len(polygon_coordinates)==4:
-                            break
-                        if i==j:
-                            continue
-                        if dir_x==0 and dir_y!=0:
-                            if pt_x_2==pt_x:
-                                polygon_coordinates.append((pt_x_2,pt_y_2))
-                                break
-                        elif dir_y==0 and dir_x!=0:
-                            if pt_y_2==pt_y:
-                                polygon_coordinates.append((pt_x_2,pt_y_2))
-                                break
-                        elif dir_x!=0 and dir_y!=0:
-                            if np.abs((pt_x_2-pt_x)/dir_x-(pt_y_2-pt_y)/dir_y) < tolerance:
-                                polygon_coordinates.append((pt_x_2,pt_y_2))
-                                break
-
-    def __found_other_object_polygon(self,index:int,pt_x:float,pt_y:float,dir_x:float,dir_y:float,object_range:float,pt_x_2:float,pt_y_2:float,tolerance:float,result,found_pts):
-        line_1 = LineString([(pt_x-object_range*dir_x,pt_y-object_range*dir_x),(pt_x+dir_x,pt_y+dir_y)])
-        point_2 = Point(pt_x_2,pt_y_2)
-        if len(result)>=4:
-            return result
-        else:
-            if self.__determine_colinear_points(line_1,point_2,tolerance):
-                result.append(point_2)
-                found_pts.append(index)
-                return result
-        pass
-
-    def __determine_colinear_points(self,line_1,point_2,tolerance:float)->bool:
-        if line_1.distance(point_2)<tolerance:
-            return True
-        else:
-            return False
         
     def __reducing_traffic_lights_dim(self):
-        self.traffic_lights['traffic_lights_state'] = self.original_data_light['traffic_lights_state']
-        self.traffic_lights['traffic_lights_lane_id'] = self.original_data_light['traffic_lights_id']
-
-        traffic_lights_x = self.original_data_light['traffic_lights_pos_x']
-        traffic_lights_y = self.original_data_light['traffic_lights_pos_y']
-        traffic_lights_valid = self.original_data_light['traffic_lights_valid']
+        self.traffic_lights['traffic_lights_state'] = self.original_data_light['traffic_lights_state'] #[91,16]
+        self.traffic_lights['traffic_lights_lane_id'] = self.original_data_light['traffic_lights_id'] #[91,16]
+ 
+        traffic_lights_x = self.original_data_light['traffic_lights_pos_x'].T #[16,91]
+        traffic_lights_y = self.original_data_light['traffic_lights_pos_y'].T #[16,91]
+        traffic_lights_valid = self.original_data_light['traffic_lights_valid'].T #[16,91]
         self.traffic_lights['points'] = []
-        for traffic_light_x,traffic_light_y,traffic_light_valid in zip(traffic_lights_x.T,traffic_lights_y.T,traffic_lights_valid.T):
+        for traffic_light_x,traffic_light_y,traffic_light_valid in zip(traffic_lights_x,traffic_lights_y, traffic_lights_valid): #type:ignore
             valid = np.where(traffic_light_valid==1)[0]
             if len(valid):
                 pos_x = np.average(traffic_light_x[valid])
