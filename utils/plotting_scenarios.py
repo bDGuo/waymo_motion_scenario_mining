@@ -175,8 +175,8 @@ def plot_road_graph(parsed:dict,ax,environment_element=None,original_data_roadgr
     for lane_type in lane_key:
         lane_polygon_set = environment_element.get_lane(lane_type)
         for lane_polygon in lane_polygon_set:
-                x,y = lane_polygon.exterior.xy
-                ax.fill(x,y,c=lane_color[lane_type],label=f'{lane_type}')
+            x,y = lane_polygon.exterior.xy
+            ax.fill(x,y,c=lane_color[lane_type],label=f'{lane_type}')
     # plot other type
     for other_object_type in other_object_key:
         other_object_polygon_list = environment_element.get_other_object(other_object_type)
