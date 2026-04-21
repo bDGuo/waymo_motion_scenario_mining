@@ -26,4 +26,4 @@ Before running the code, please download the dataset v1.1 in tf_example format f
 
 ## Extracted scenarios
 
-We have extracted a total of 215,090 scenarios across three scenario categories, which is accessible [here](https://drive.google.com/file/d/1i7kxqBIosCxKK2SI_cP6srOqkre_iDkc/view?usp=share_link).
+We have extracted a total of 215,090 scenarios across three scenario categories, which is accessible [here](https://drive.google.com/drive/folders/1dnaroV78wZccypCG-OHI0w8CpbyJ0HcW?usp=drive_link).
